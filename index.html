@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#4a78bf">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Stock buanderie Bierset</title>
+<style>
+  :root{
+    --ink:#1c2b33;
+    --paper:#f2efe9;
+    --card:#ffffff;
+    --line:#dcd6c9;
+    --accent:#3f5ca8;
+    --accent-dim:#93a6d6;
+    --warn:#a8492f;
+    --ok:#3c7a5c;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--paper); color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  body{padding-bottom:40px;}
+
+
+
+  /* ---- Export ---- */
+  .exp-group{padding:12px 0 6px; border-bottom:1px solid var(--line);}
+  .exp-group:last-child{border-bottom:none;}
+  .exp-group h3{margin:0 0 4px; font-size:15px;}
+  .exp-group .exp-desc{font-size:12px; color:#6b787d; margin-bottom:10px;}
+  .exp-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .exp-btn{
+    flex:1 1 30%; min-width:0; padding:11px 6px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--ink); font-size:13px; font-weight:600; line-height:1.25;
+  }
+  .exp-btn:active{background:#e4ebf8;}
+  .exp-btn[disabled]{opacity:0.5;}
+
+  /* ---- Bandeau EAFC ---- */
+  .brand{
+    position:relative; color:#fff; overflow:hidden;
+    background:linear-gradient(165deg,#5296d5 0%,#4a78bf 55%,#4563ab 100%);
+    padding:calc(env(safe-area-inset-top,0px) + 16px) 18px 0;
+  }
+  .brand::before{ /* grand cercle décoratif discret */
+    content:""; position:absolute; right:-70px; top:-90px; width:230px; height:230px;
+    border-radius:50%; border:26px solid rgba(255,255,255,0.07);
+  }
+  .brand::after{
+    content:""; position:absolute; right:30px; top:58px; width:90px; height:90px;
+    border-radius:50%; background:rgba(255,255,255,0.06);
+  }
+  .brand-logo{display:block; height:52px; width:auto; position:relative; z-index:1;}
+  .brand-title{
+    position:relative; z-index:1;
+    margin:14px 0 0; font-size:25px; font-weight:800; letter-spacing:-0.02em; line-height:1.1;
+  }
+  .brand-title span{font-weight:500; opacity:0.88;}
+  .brand-wave{display:block; width:calc(100% + 36px); margin:8px -18px -1px; height:22px; position:relative; z-index:1;}
+
+  header{
+    position:sticky; top:0; z-index:10;
+    background:var(--paper);
+    padding:10px 16px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{
+    font-size:19px; font-weight:700; margin:0 0 2px;
+    letter-spacing:-0.01em;
+  }
+  .sub{font-size:12.5px; color:#5b6a70; margin-bottom:12px;}
+
+  .search{
+    width:100%; padding:10px 12px; border-radius:9px;
+    border:1px solid var(--line); background:var(--card);
+    font-size:15px; color:var(--ink); outline:none;
+  }
+  .search:focus{border-color:var(--accent);}
+
+  .filters{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .chip{
+    font-size:12px; padding:5px 10px; border-radius:999px;
+    border:1px solid var(--line); background:var(--card); color:#5b6a70;
+  }
+  .chip.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+
+  main{padding:10px 12px 0;}
+
+  .card{
+    background:var(--card); border:1px solid var(--line);
+    border-radius:11px; padding:12px 13px; margin-bottom:9px;
+  }
+  .row1{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .name-wrap{display:flex; align-items:center; gap:10px; flex:1; min-width:0;}
+  .product-icon{
+    flex-shrink:0; width:38px; height:38px; border-radius:10px;
+    background:#edf1fa; color:var(--accent);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .product-icon svg{width:21px; height:21px;}
+  .name{font-size:14.5px; font-weight:600; line-height:1.28; flex:1; min-width:0;}
+
+  .restant-badge{
+    font-family:var(--mono); font-size:15px; font-weight:700;
+    padding:3px 9px; border-radius:7px; white-space:nowrap;
+    background:#edf1fa; color:var(--ink);
+  }
+  .restant-badge.low{background:#f7e6e0; color:var(--warn);}
+  .restant-badge.zero{background:#f2dcd4; color:var(--warn);}
+
+  .edit-btn{
+    background:none; border:none; font-size:14px; cursor:pointer; padding:4px 6px; border-radius:8px; color:var(--muted,#7a7a7a);
+  }
+  .edit-btn:active{background:#dfe8f5;}
+  .del-btn{
+    background:none; border:none; color:#b9a99f; font-size:15px;
+    width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+    border-radius:999px; flex-shrink:0;
+  }
+  .del-btn:active{background:#f2dcd4; color:var(--warn);}
+
+  .row2{display:flex; align-items:center; justify-content:space-between; margin-top:11px; gap:10px;}
+
+  .stepper{display:flex; align-items:center; gap:0; border:1px solid var(--line); border-radius:9px; overflow:hidden;}
+  .stepper button{
+    width:38px; height:34px; border:none; background:var(--card);
+    font-size:18px; color:var(--accent); font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .stepper button:active{background:#e4ebf8;}
+  .stepper .count{
+    min-width:34px; text-align:center; font-family:var(--mono);
+    font-size:14px; border-left:1px solid var(--line); border-right:1px solid var(--line);
+    padding:0 4px; height:34px; line-height:34px; background:#fafaf7;
+    cursor:pointer;
+  }
+  .stepper-label{font-size:10.5px; color:#8a9497; letter-spacing:0.01em; margin-right:6px;}
+
+  .target-wrap{display:flex; align-items:center; gap:6px;}
+  .target-wrap label{font-size:10.5px; color:#8a9497;}
+  .target-wrap input{
+    width:44px; text-align:center; font-family:var(--mono); font-size:13px;
+    padding:6px 2px; border:1px solid var(--line); border-radius:7px; background:#fafaf7; color:var(--ink);
+  }
+
+  .order-line{
+    margin-top:8px; font-size:12px; color:var(--accent);
+    display:flex; justify-content:space-between; border-top:1px dashed var(--line); padding-top:7px;
+  }
+  .order-line b{font-family:var(--mono); font-size:13px;}
+  .order-line.zero{color:#9aa39f;}
+
+  .empty{text-align:center; color:#8a9497; font-size:13px; padding:40px 20px;}
+
+  footer{
+    padding:16px; text-align:center; font-size:11px; color:#9aa39f;
+  }
+
+  .toast{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--ink); color:#fff; font-size:12.5px; padding:8px 16px;
+    border-radius:999px; opacity:0; pointer-events:none; transition:opacity .18s, transform .18s;
+    z-index:50;
+  }
+  .toast.show{opacity:0.95; transform:translateX(-50%) translateY(0); pointer-events:auto;}
+
+  .top-actions{display:flex; justify-content:flex-end; margin-bottom:10px; gap:8px; align-items:center;}
+  .sync-btn{
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    width:34px; height:34px; font-size:15px; display:flex; align-items:center; justify-content:center;
+  }
+  .sync-status{font-size:11px; color:#8a9497; margin-left:6px;}
+  .sync-status.on{color:var(--ok);}
+  .order-btn{
+    display:flex; align-items:center; gap:6px;
+    background:var(--accent); color:#fff; border:none;
+    padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600;
+  }
+  .order-btn .badge-count{
+    background:rgba(255,255,255,0.25); border-radius:999px;
+    font-family:var(--mono); font-size:11.5px; padding:1px 7px;
+  }
+
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(20,25,25,0.4);
+    display:none; z-index:40;
+  }
+  .sheet-backdrop.show{display:block;}
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:41;
+    background:var(--paper); border-radius:16px 16px 0 0;
+    max-height:82vh; display:flex; flex-direction:column;
+    transform:translateY(100%); transition:transform .22s ease;
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet-header{
+    padding:14px 16px 10px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .sheet-header h2{font-size:16.5px; margin:0;}
+  .sheet-close{border:none; background:none; font-size:22px; color:#8a9497; line-height:1;}
+  .sheet-body{overflow-y:auto; padding:6px 16px 10px;}
+  .order-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .order-item:last-child{border-bottom:none;}
+  .order-item b{font-family:var(--mono); color:var(--accent);}
+  .sheet-actions{
+    display:flex; gap:8px; padding:12px 16px calc(16px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); background:var(--paper);
+  }
+  .sheet-actions button{
+    flex:1; padding:12px; border-radius:10px; font-size:14px; font-weight:600; border:none;
+  }
+  .btn-print{background:#e7e3d8; color:var(--ink);}
+  .btn-mail{background:var(--accent); color:#fff;}
+  .sheet-empty{padding:30px 4px; text-align:center; color:#8a9497; font-size:13px;}
+
+  #printArea{display:none;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{
+      display:block; position:absolute; top:0; left:0; right:0; padding:20px;
+    }
+    .sheet-actions{display:none;}
+  }
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(20,25,25,0.45);
+    display:none; align-items:center; justify-content:center; z-index:60; padding:20px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal-box{
+    background:var(--card); border-radius:14px; padding:18px;
+    width:100%; max-width:300px;
+  }
+  .modal-box p{font-size:14.5px; line-height:1.4; margin:0 0 6px;}
+  .modal-box .modal-sub{font-size:12.5px; color:#5b6a70; margin-bottom:14px;}
+  .modal-box input{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+    font-size:15px; margin-bottom:14px; font-family:var(--mono);
+  }
+  .modal-actions{display:flex; gap:8px;}
+  .modal-actions button{
+    flex:1; padding:11px; border-radius:9px; font-size:14px; font-weight:600; border:none;
+  }
+  .modal-cancel{background:#eee9dc; color:var(--ink);}
+  .modal-confirm{background:var(--accent); color:#fff;}
+</style>
+</head>
+<body>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<div class="brand">
+  <div class="brand-title">Stock <span>buanderie Bierset</span></div>
+  <svg class="brand-wave" viewBox="0 0 400 22" preserveAspectRatio="none" aria-hidden="true"><path d="M0 22V9C55 -2 115 20 200 10S345 0 400 11V22Z" fill="#f2efe9"/></svg>
+</div>
+
+<header>
+  <div class="sub" id="subline">Chargement…</div>
+  <div class="top-actions">
+    <button class="order-btn" id="openOrder">
+      Commande <span class="badge-count" id="orderCount">0</span>
+    </button>
+    <button class="sync-btn" id="openAdd" title="Ajouter un produit">➕</button>
+    <button class="sync-btn" id="openHistory" title="Historique">🕘</button>
+    <button class="sync-btn" id="openExport" title="Exporter">📤</button>
+    <button class="sync-btn" id="openUser" title="Ton nom">👤</button>
+    <button class="sync-btn" id="openSync" title="Synchronisation">⚙️</button>
+  </div>
+  <input class="search" id="search" placeholder="Rechercher un produit…" autocomplete="off">
+  <div class="filters">
+    <button class="chip active" data-filter="all">Tous</button>
+    <button class="chip" data-filter="low">Restant ≤ 2</button>
+    <button class="chip" data-filter="order">À commander</button>
+  </div>
+</header>
+
+<main id="list"></main>
+<footer>Modifications synchronisées en temps réel entre tous les appareils<br><span id="appVersion"></span></footer>
+<div class="toast" id="toast"></div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="orderSheet">
+  <div class="sheet-header">
+    <h2>Liste à commander</h2>
+    <button class="sheet-close" id="closeOrder">&times;</button>
+  </div>
+  <div class="sheet-body" id="orderList"></div>
+  <div class="sheet-actions">
+    <button class="btn-print" id="printOrder">Imprimer</button>
+    <button class="btn-mail" id="mailOrder">Envoyer par mail</button>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="historyBackdrop"></div>
+<div class="sheet" id="historySheet">
+  <div class="sheet-header">
+    <h2>Historique des modifications</h2>
+    <button class="sheet-close" id="closeHistory">&times;</button>
+  </div>
+  <div class="sheet-body" id="historyList"></div>
+</div>
+
+<div class="sheet-backdrop" id="exportBackdrop"></div>
+<div class="sheet" id="exportSheet">
+  <div class="sheet-header">
+    <h2>Exporter</h2>
+    <button class="sheet-close" id="closeExport">&times;</button>
+  </div>
+  <div class="sheet-body" id="exportBody"></div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+const APP_VERSION = "v1.0 · 8 oct. 2026 · Bierset";
+const STORAGE_KEY = "stock-bierset-v1";
+const API_URL_KEY = "stock-bierset-apiurl";
+const USER_KEY = "stock-bierset-user";
+
+// URL du script Apps Script déployé — configurée d'office, pas besoin de la
+// coller manuellement. localStorage prend le dessus si un ⚙️ l'a changée.
+const DEFAULT_API_URL = "";
+
+// Liste fermée des utilisateurs — pas de saisie libre, évite les fautes de
+// frappe et les noms fantaisistes dans l'historique.
+const USERS_LIST = ["Nicolas", "Ingrid", "David"];
+// Ces utilisateurs peuvent ajouter/supprimer des produits sans code admin.
+const STRUCTURE_USERS = ["Nicolas", "Ingrid", "David"];
+// Seuls ces utilisateurs voient le bouton Historique — pour les autres il
+// est complètement masqué (pas juste verrouillé), donc son existence même
+// n'est pas visible. Rappel : c'est masqué côté interface, pas un vrai
+// secret — visible dans le code source pour qui irait le lire.
+const HISTORY_USERS = ["Nicolas"];
+// Code admin — protège les réglages de synchro (et la structure pour tout
+// le monde en dehors de STRUCTURE_USERS). Ceci est une protection légère
+// côté interface : le code est visible dans le code source de la page
+// (repo public), ça dissuade les erreurs/changements accidentels mais
+// n'empêche pas quelqu'un de lire le fichier pour le contourner.
+const ADMIN_PIN = "1282";
+
+// ---- Base de données Firebase (temps réel) -----------------------------
+// Remplace Google Sheets + Apps Script pour la synchro : les modifications
+// arrivent sur les autres appareils en moins d'une seconde (flux SSE), les
+// écritures sont confirmées par le serveur (réponse lisible, pas de no-cors).
+// Tant que l'adresse n'est pas renseignée, l'ancienne synchro reste utilisée.
+const FB_URL = (localStorage.getItem("stock-bierset-fburl") || "https://stock-buanderie-bierset-default-rtdb.europe-west1.firebasedatabase.app").replace(/\/+$/, "");
+const USE_FB = /^https?:\/\//.test(FB_URL);
+
+let apiUrl = USE_FB ? FB_URL : (localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL);
+let syncPollTimer = null;
+
+function getUsername(){
+  return localStorage.getItem(USER_KEY) || "";
+}
+
+const defaultProducts = [
+["Cif WC", 6],
+["Gants Taille M/L", 1],
+["Cif crème 750 ml", 12],
+["Eponge à récurer Starbright (paquets)", 20],
+["Tablette lave vaisselle (fût)", 1],
+["Savon main 5L (boîtes)", 2],
+["Détergent Dreft 5L (bidons)", 1],
+["Nettoyant sol Fleurs Blanches (bidons)", 4],
+["Bobine chamois brune industrielle", 36],
+["Sac poubelle 60L (rouleaux)", 20],
+["Dreamex (bidons)", 8],
+["Bobines micro gauffrés rouleaux blancs", 18],
+["Eau déminéralisée 5L", 4],
+["Boubou WC", 10],
+["Brosse poils brune industrielle sans le bâton", 8],
+["Vinaigre ménager (bidons)", 12],
+["Microfibres foncés (paquets)", 5],
+["Lavette pour toi et atelier", null],
+["Brosse vaisselle", 4],
+];
+
+let products = [];
+let currentFilter = "all";
+let searchTerm = "";
+
+function makeId(name, i){
+  return "p" + i + "-" + name.toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,40);
+}
+
+// ---- Product icons ----------------------------------------------------
+// No brand photos (copyrighted, and hotlinked images break) — a small set
+// of clean line-art category icons, picked automatically from the product
+// name. Consistent look, works offline, never a broken image.
+const PRODUCT_ICONS = {
+  bottle: `<path d="M9.5 9.5h5v10.5a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5V9.5Z"/><rect x="10.5" y="5.5" width="3" height="4"/><rect x="9.8" y="3.5" width="4.4" height="2.2" rx="0.6"/>`,
+  jerrycan: `<rect x="5" y="8.5" width="14" height="12" rx="2"/><rect x="9" y="4.5" width="6" height="4" rx="1"/><path d="M9 6.5H6.5a1 1 0 0 0-1 1V8.5M15 6.5h2.5a1 1 0 0 1 1 1V8.5"/><line x1="7.5" y1="13.5" x2="16.5" y2="13.5"/>`,
+  box: `<path d="M4 8.5 12 5l8 3.5M4 8.5v10.5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8.5M4 8.5 12 12M12 12l8-3.5M12 12v8"/>`,
+  sponge: `<rect x="4" y="8" width="16" height="9" rx="3.5"/><circle cx="9" cy="12.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.5" cy="13.8" r="0.9" fill="currentColor" stroke="none"/><circle cx="16.5" cy="10.8" r="0.9" fill="currentColor" stroke="none"/>`,
+  gloves: `<path d="M7.5 21v-9.5a1.7 1.7 0 0 1 3.4 0v2.3M10.9 12.6V6.3a1.6 1.6 0 0 1 3.2 0v6.2M14.1 12.2V5.6a1.6 1.6 0 0 1 3.2 0v7.3M17.3 12.3V8.2a1.5 1.5 0 0 1 3 0v6.9a5.2 5.2 0 0 1-5.2 5.2h-4.6a2.5 2.5 0 0 1-2.5-2.5v-2.3"/>`,
+  paperroll: `<ellipse cx="12" cy="6.2" rx="6" ry="2.7"/><path d="M6 6.2v10a6 2.7 0 0 0 12 0v-10"/><ellipse cx="12" cy="6.2" rx="2.1" ry="0.9" fill="currentColor" stroke="none"/>`,
+  wipes: `<rect x="4.5" y="6.5" width="15" height="13" rx="2"/><path d="M9.3 6.5c0-1.3 1.1-2.3 2.7-2.3s2.7 1 2.7 2.3" fill="none"/><path d="M10.5 6.5 12 9.8l-1.3 2 1.3 3.2"/>`,
+  vacuumbag: `<path d="M8.3 3.5h7.4l2 6.2H6.3l2-6.2Z"/><path d="M6.3 9.7h11.4l-1.4 9.3a2 2 0 0 1-2 1.7H9.7a2 2 0 0 1-2-1.7L6.3 9.7Z"/>`,
+  trashbag: `<path d="M6.2 6.5h11.6l-1.1 12.3a2 2 0 0 1-2 1.8h-5.4a2 2 0 0 1-2-1.8L6.2 6.5Z"/><path d="M9.3 6.5V4.3h5.4v2.2"/><path d="M6.6 6.5l3 3.2M17.4 6.5l-3 3.2" opacity="0.55"/>`,
+  broom: `<line x1="16.5" y1="4" x2="9.5" y2="11"/><path d="M9.5 11 5 20.5M9.5 11l-0.3 9.5M9.5 11l4.8 9.5" opacity="0.85"/>`,
+  tablet: `<rect x="6" y="8.5" width="12" height="9" rx="4"/><circle cx="12" cy="13" r="2.1" fill="currentColor" stroke="none" opacity="0.45"/>`,
+  spray: `<rect x="8.3" y="9" width="7.4" height="11.5" rx="2.6"/><rect x="10" y="5.5" width="4" height="3.5" rx="1"/><path d="M4.5 10 6.7 11M4.5 14 6.7 13.3M19.5 10 17.3 11M19.5 14 17.3 13.3" opacity="0.6"/>`,
+};
+
+const CATEGORY_RULES = [
+  [/gant/, "gloves"],
+  [/eponge/, "sponge"],
+  [/sac.*poubelle|poubelle/, "trashbag"],
+  [/sac.*aspirateur|aspirateur/, "vacuumbag"],
+  [/lingette|voile/, "wipes"],
+  [/papier|chamoix|chamois|bobine/, "paperroll"],
+  [/desodorisant|sanet|riem|prodiflore/, "spray"],
+  [/tabs|tablette|sel|bicarbonate|neutraligel/, "tablet"],
+  [/tete.*loup/, "broom"],
+  [/5l|3l|55l|4d.*1l|mado clean|deminerali/, "jerrycan"],
+];
+
+// Échappe le HTML : un nom de produit contenant < > & " ne doit jamais être
+// interprété comme du code par la page.
+function esc(v){
+  return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function normalize(s){
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function categoryFor(name){
+  const n = normalize(name);
+  for(const [re, cat] of CATEGORY_RULES){
+    if(re.test(n)) return cat;
+  }
+  return "bottle";
+}
+
+function productIconSvg(name){
+  const cat = categoryFor(name);
+  const path = PRODUCT_ICONS[cat] || PRODUCT_ICONS.bottle;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+}
+
+async function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      products = JSON.parse(raw);
+      // migrate old data model (base + entrées/sorties counters) to a single mutable stock value
+      let migrated = false;
+      products.forEach(p => {
+        if((p.entrees||0) !== 0 || (p.sorties||0) !== 0){
+          p.base = p.base + (p.entrees||0) - (p.sorties||0);
+          p.entrees = 0;
+          p.sorties = 0;
+          migrated = true;
+        }
+      });
+      if(migrated) saveData(true);
+      return;
+    }
+  }catch(e){ /* no saved data yet, or storage unavailable */ }
+  products = defaultProducts.map(([name, qty], i) => ({
+    id: makeId(name, i),
+    name,
+    base: qty || 0,
+    target: null
+  }));
+  saveData(true);
+}
+
+let saveTimer = null;
+function saveData(silent){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+    if(!silent) showToast("Enregistré");
+  }catch(e){
+    showToast("Erreur d'enregistrement");
+  }
+}
+function saveDataDebounced(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveData(true), 300);
+}
+
+// Custom confirm/prompt — window.confirm()/prompt() are silently blocked by iOS
+// when the page runs in standalone (Add to Home Screen) mode.
+function customConfirm(message, sub){
+  return new Promise(resolve => {
+    const backdrop = document.getElementById("modalBackdrop");
+    const box = document.getElementById("modalBox");
+    box.innerHTML = `
+      <p>${message}</p>
+      ${sub ? `<div class="modal-sub">${sub}</div>` : ""}
+      <div class="modal-actions">
+        <button class="modal-cancel" id="mCancel">Annuler</button>
+        <button class="modal-confirm" id="mOk">Confirmer</button>
+      </div>`;
+    backdrop.classList.add("show");
+    const cleanup = (result) => {
+      backdrop.classList.remove("show");
+      resolve(result);
+    };
+    document.getElementById("mCancel").onclick = () => cleanup(false);
+    document.getElementById("mOk").onclick = () => cleanup(true);
+    backdrop.onclick = (e) => { if(e.target === backdrop) cleanup(false); };
+  });
+}
+
+function customPrompt(message, defaultValue){
+  return new Promise(resolve => {
+    const backdrop = document.getElementById("modalBackdrop");
+    const box = document.getElementById("modalBox");
+    box.innerHTML = `
+      <p>${message}</p>
+      <input type="number" inputmode="numeric" id="mInput" value="${defaultValue}">
+      <div class="modal-actions">
+        <button class="modal-cancel" id="mCancel">Annuler</button>
+        <button class="modal-confirm" id="mOk">OK</button>
+      </div>`;
+    backdrop.classList.add("show");
+    const input = document.getElementById("mInput");
+    input.focus();
+    input.select();
+    const cleanup = (result) => {
+      backdrop.classList.remove("show");
+      resolve(result);
+    };
+    document.getElementById("mCancel").onclick = () => cleanup(null);
+    document.getElementById("mOk").onclick = () => cleanup(input.value);
+    backdrop.onclick = (e) => { if(e.target === backdrop) cleanup(null); };
+  });
+}
+
+function restantOf(p){
+  return p.base;
+}
+
+const GET_TIMEOUT_MS = 20000;
+let lastApiError = "";      // dernière cause d'échec de lecture, affichée dans l'indicateur
+let lastSource = "";        // "feuille" (lecture directe) ou "script" (Apps Script)
+
+// ---- Lecture directe de la feuille Google -------------------------------
+// Le script Apps Script est lent (2 à 5 s) et échoue par moments (page
+// « introuvable » après 20-45 s) dès que plusieurs téléphones l'interrogent.
+// Les lectures de sondage passent donc par la feuille elle-même (≈ 0,3 s,
+// aucune charge sur le script), qui reste lisible par lien. Le script ne sert
+// plus qu'aux écritures. Si la lecture directe échoue (feuille rendue privée,
+// réseau…), on retombe automatiquement sur le script.
+const SHEET_ID = "";
+const SHEET_TAB = "Stock";
+const GVIZ_TIMEOUT_MS = 8000;
+let gvizBlockedUntil = 0;   // après un échec, on n'insiste pas pendant 1 min
+function gvizGet(force){
+  // uniquement pour la feuille d'origine : un autre script = une autre feuille
+  // (force : lecture ponctuelle pour la migration vers Firebase)
+  if((!force && apiUrl !== DEFAULT_API_URL) || Date.now() < gvizBlockedUntil) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const cb = "__gv" + Math.random().toString(36).slice(2);
+    const s = document.createElement("script");
+    let finished = false;
+    const finish = (val, why) => {
+      if(finished) return;
+      finished = true;
+      clearTimeout(to);
+      delete window[cb];
+      s.remove();
+      if(!val) gvizBlockedUntil = Date.now() + 60 * 1000;
+      if(!val && why) lastApiError = why;
+      resolve(val);
+    };
+    const to = setTimeout(() => finish(null, "lecture directe : délai dépassé"), GVIZ_TIMEOUT_MS);
+    window[cb] = (resp) => {
+      try{
+        const cols = resp && resp.table && resp.table.cols || [];
+        const rows = resp && resp.table && resp.table.rows || [];
+        if(resp.status !== "ok" || !cols.length || cols[0].label !== "name" || !rows.length){
+          return finish(null, "lecture directe : format inattendu");
+        }
+        const out = [];
+        rows.forEach(r => {
+          const c = r.c || [];
+          const name = c[0] && c[0].v;
+          if(name === null || name === undefined || name === "") return;
+          const base = c[1] && c[1].v;
+          const target = c[2] && c[2].v;
+          out.push({
+            name: String(name),
+            base: Number(base) || 0,
+            target: (target === null || target === undefined || target === "") ? null : Number(target)
+          });
+        });
+        finish(out.length ? out : null, "lecture directe : aucune ligne");
+      }catch(e){ finish(null, "lecture directe : erreur"); }
+    };
+    s.onerror = () => finish(null, "lecture directe : refusée");
+    // Page de connexion / d'erreur renvoyée à la place des données : le fichier
+    // se charge sans appeler notre fonction (la fonction est appelée pendant
+    // l'exécution du script, avant l'événement load). On n'attend pas le délai.
+    s.onload = () => setTimeout(() => finish(null, "lecture directe : refusée"), 0);
+    s.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?sheet=" +
+      encodeURIComponent(SHEET_TAB) + "&headers=1&tqx=" + encodeURIComponent("out:json;responseHandler:" + cb) +
+      "&_=" + Date.now();
+    document.head.appendChild(s);
+  });
+}
+
+// Lecture de sondage : feuille d'abord, script en repli.
+async function apiGetFast(){
+  const direct = await gvizGet();
+  if(direct){ lastSource = "feuille"; return direct; }
+  lastSource = "script";   // repli : le rythme de sondage ralentit pour ménager le script
+  return await apiGet();
+}
+
+// ---- Firebase : lecture, écriture, historique, migration -----------------
+// Clé d'un produit : son nom, rendu compatible avec les clés Firebase
+// (interdit : . $ # [ ] /). Le vrai nom est aussi stocké dans la valeur.
+function fbKey(name){
+  return encodeURIComponent(String(name)).replace(/\./g, "%2E");
+}
+function fbPath(name){
+  return "/products/" + encodeURIComponent(fbKey(name)) + ".json";
+}
+function fbRowOf(v){
+  return {
+    name: String(v.name),
+    base: Number(v.base) || 0,
+    target: (v.target === null || v.target === undefined || v.target === "") ? null : Number(v.target)
+  };
+}
+let fbKnownNames = new Set(); // produits vus sur le serveur (distingue ajout / maj dans l'historique)
+
+async function fbFetchJson(path, opts){
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), GET_TIMEOUT_MS);
+  try{
+    const res = await fetch(FB_URL + path, Object.assign({cache:"no-store", signal: ctrl.signal}, opts || {}));
+    if(!res.ok){
+      lastApiError = res.status === 401 || res.status === 403 ? "accès refusé par la base de données"
+        : "base de données : erreur " + res.status;
+      return {ok:false, data:null};
+    }
+    return {ok:true, data: await res.json()};
+  } finally { clearTimeout(killer); }
+}
+
+async function legacyScriptGet(){
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), GET_TIMEOUT_MS);
+  try{
+    const res = await fetch(DEFAULT_API_URL + "?_=" + Date.now(), {cache:"no-store", signal: ctrl.signal});
+    const data = await res.json();
+    return (data && data.ok) ? data.products : null;
+  }catch(e){ return null; }
+  finally{ clearTimeout(killer); }
+}
+
+// Première ouverture après le passage à Firebase : la base est vide, on y
+// copie une fois le contenu de la feuille Google (première ligne de chaque
+// nom). Le drapeau meta/migrated empêche toute nouvelle copie ensuite.
+async function fbMigrateIfNeeded(){
+  // Base vide au premier lancement : on y envoie le catalogue de départ
+  // (stock = quantités de départ, sans cible). Le drapeau meta/migrated évite
+  // tout nouvel envoi ensuite.
+  const flag = await fbFetchJson("/meta/migrated.json?_=" + Date.now());
+  if(!flag.ok || flag.data === true) return null;
+  const upd = {}, rows = [];
+  defaultProducts.forEach(([name, qty]) => {
+    const row = {name:name, base:qty || 0, target:null};
+    rows.push(row);
+    upd["products/" + fbKey(name)] = row;
+  });
+  upd["meta/migrated"] = true;
+  const r = await fetch(FB_URL + "/.json", {method:"PATCH", body: JSON.stringify(upd)});
+  if(!r.ok){ lastApiError = "initialisation impossible (erreur " + r.status + ")"; return null; }
+  return rows;
+}
+
+async function fbGet(){
+  try{
+    const r = await fbFetchJson("/products.json?_=" + Date.now());
+    if(!r.ok) return null;
+    const out = [];
+    const data = r.data;
+    if(data && typeof data === "object"){
+      Object.keys(data).sort().forEach(k => {
+        const v = data[k];
+        if(v && v.name !== undefined && v.name !== "") out.push(fbRowOf(v));
+      });
+    }
+    if(out.length === 0){
+      // base vide : première utilisation → migration. Si elle échoue, on
+      // signale une panne plutôt que de renvoyer « liste vide » (qui
+      // effacerait les produits affichés).
+      const migrated = await fbMigrateIfNeeded();
+      if(migrated){ fbKnownNames = new Set(migrated.map(p => p.name)); return migrated; }
+      const flag = await fbFetchJson("/meta/migrated.json?_=" + Date.now());
+      if(!flag.ok || flag.data !== true){ if(!lastApiError) lastApiError = "migration des données impossible"; return null; }
+    }
+    fbKnownNames = new Set(out.map(p => p.name));
+    return out;
+  }catch(e){
+    lastApiError = (e && e.name === "AbortError") ? "la base de données ne répond pas (délai dépassé)" : "réseau";
+    return null;
+  }
+}
+
+async function fbSend(payload){
+  const path = fbPath(payload.name);
+  let res;
+  if(payload.action === "delete"){
+    res = await fetch(FB_URL + path, {method:"DELETE", keepalive:true});
+  } else {
+    const t = payload.target;
+    const body = {
+      name: String(payload.name),
+      base: Number(payload.base) || 0,
+      target: (t === null || t === undefined || t === "") ? null : Number(t)
+    };
+    res = await fetch(FB_URL + path, {method:"PUT", keepalive:true, body: JSON.stringify(body)});
+  }
+  if(!res.ok){
+    lastApiError = res.status === 401 || res.status === 403 ? "accès refusé par la base de données" : "base de données : erreur " + res.status;
+    throw new Error("http " + res.status);
+  }
+  // journal (sans bloquer ni faire échouer l'écriture)
+  let action = "suppression";
+  if(payload.action !== "delete") action = fbKnownNames.has(payload.name) ? "maj" : "ajout";
+  fbKnownNames[payload.action === "delete" ? "delete" : "add"](payload.name);
+  const entry = {
+    t: {".sv": "timestamp"},
+    user: (payload.user && String(payload.user).trim()) || "Inconnu",
+    action: action,
+    name: String(payload.name)
+  };
+  if(payload.action !== "delete"){
+    entry.base = Number(payload.base) || 0;
+    if(payload.target !== null && payload.target !== undefined && payload.target !== "") entry.target = Number(payload.target);
+  }
+  fetch(FB_URL + "/log.json", {method:"POST", keepalive:true, body: JSON.stringify(entry)}).catch(() => {});
+}
+
+async function fbGetLog(limit){
+  try{
+    const q = "?orderBy=" + encodeURIComponent('"$key"') + "&limitToLast=" + (limit || 200);
+    const r = await fbFetchJson("/log.json" + q);
+    if(!r.ok) return null;
+    const data = r.data || {};
+    return Object.keys(data).sort().reverse().map(k => {
+      const e = data[k] || {};
+      const d = new Date(e.t);
+      return {
+        timestamp: isNaN(d) ? String(e.t || "") : d.toISOString(),
+        user: String(e.user || "Inconnu"),
+        action: String(e.action || ""),
+        name: String(e.name || ""),
+        base: (e.base === undefined || e.base === null) ? null : Number(e.base),
+        target: (e.target === undefined || e.target === null) ? null : Number(e.target)
+      };
+    });
+  }catch(e){ return null; }
+}
+
+async function fbSeed(list){
+  const upd = {};
+  const seen = {};
+  list.forEach(p => {
+    if(seen[p.name]) return;
+    seen[p.name] = 1;
+    upd["products/" + fbKey(p.name)] = {name:p.name, base:Number(p.base) || 0, target:(p.target === null || p.target === undefined || p.target === "") ? null : Number(p.target)};
+  });
+  upd["meta/migrated"] = true;
+  try{ await fetch(FB_URL + "/.json", {method:"PATCH", body: JSON.stringify(upd)}); }catch(e){ /* ignore */ }
+}
+
+// Flux temps réel : le serveur pousse chaque changement, on relit aussitôt.
+// (Les iPhone coupent la connexion en arrière-plan : on la rouvre au retour.)
+let fbStream = null, fbStreamOk = false, pollAgain = false;
+function fbStopStream(){
+  if(fbStream){ try{ fbStream.close(); }catch(e){} }
+  fbStream = null; fbStreamOk = false;
+}
+function fbOnStream(){
+  if(document.hidden) return;
+  if(pollBusy){ pollAgain = true; return; }
+  pollOnce();
+}
+function fbStartStream(){
+  fbStopStream();
+  if(!USE_FB || typeof EventSource === "undefined") return;
+  try{
+    const es = new EventSource(FB_URL + "/products.json");
+    fbStream = es;
+    es.onopen = () => { fbStreamOk = true; };
+    es.addEventListener("put", fbOnStream);
+    es.addEventListener("patch", fbOnStream);
+    es.onerror = () => { fbStreamOk = false; };
+  }catch(e){ fbStreamOk = false; }
+}
+
+async function apiGet(){
+  if(USE_FB) return fbGet();
+  if(!apiUrl) return null;
+  // Délai maximum : sans lui, une requête qui reste bloquée (iPhone remis en
+  // veille, réponse Google très lente) ne se termine jamais, le verrou du
+  // sondage reste fermé et l'app ne se met plus à jour jusqu'au redémarrage.
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), GET_TIMEOUT_MS);
+  try{
+    // cache:"no-store" + paramètre unique : empêche le navigateur (surtout Safari
+    // sur iPhone) de reservir une ancienne réponse mise en cache au lieu de
+    // demander les données actuelles au serveur.
+    const sep = apiUrl.includes("?") ? "&" : "?";
+    const res = await fetch(apiUrl + sep + "_=" + Date.now(), {method:"GET", cache:"no-store", signal: ctrl.signal});
+    const data = await res.json();
+    if(data && data.ok) return data.products;
+    lastApiError = "réponse invalide du script";
+  }catch(e){ /* offline, misconfigured or timed out — silently fall back */
+    lastApiError = (e && e.name === "AbortError") ? "le script Google ne répond pas (délai dépassé)"
+      : (e instanceof SyntaxError) ? "le script Google renvoie une erreur"
+      : "réseau";
+  }
+  finally{ clearTimeout(killer); }
+  return null;
+}
+
+async function apiGetLog(limit){
+  if(!apiUrl) return null;
+  if(USE_FB) return fbGetLog(limit);
+  try{
+    const sep = apiUrl.includes("?") ? "&" : "?";
+    const res = await fetch(apiUrl + sep + "action=log&limit=" + (limit || 200) + "&_=" + Date.now(), {method:"GET", cache:"no-store"});
+    const data = await res.json();
+    if(data && data.ok) return data.log;
+  }catch(e){ /* ignore */ }
+  return null;
+}
+
+// ---- Write queue: retries update/delete requests that failed to even
+// leave the browser (offline). A no-cors write to a reachable server never
+// throws (opaque response), so a thrown error here means real connectivity
+// loss — those are the ones worth queuing and retrying automatically. ----
+const QUEUE_KEY = "stock-bierset-queue";
+function loadQueue(){
+  try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }catch(e){ return []; }
+}
+function saveQueue(){
+  try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(writeQueue)); }catch(e){}
+}
+let writeQueue = loadQueue();
+
+function queueWrite(payload){
+  // une seule écriture en attente par produit : la plus récente remplace les
+  // anciennes (sinon une vieille valeur rejouée plus tard écraserait la bonne)
+  writeQueue = writeQueue.filter(q => q.name !== payload.name);
+  writeQueue.push(payload);
+  saveQueue();
+  if(USE_FB) scheduleFlush(2500); // nouvelle tentative rapide
+  render(); // refresh the "en attente" badge in the status line right away
+}
+
+// Names deleted locally but not yet confirmed sent to the server — kept out
+// of mergeServerData so a reload right after deleting can't resurrect them.
+let pendingDeletes = new Set();
+
+// Names with an add/update currently in flight (being sent to / verified
+// against the server) or still sitting in the local retry queue.
+// mergeServerData needs this to tell a product deleted on another device
+// (safe to remove locally) apart from a product we just added/edited here
+// that the server simply hasn't caught up with yet (must NOT be removed).
+let pendingConfirms = new Set();
+
+// Après un rechargement de page, les écritures encore en file d'attente
+// doivent rester protégées du poll, sinon la valeur locale est écrasée.
+writeQueue.forEach(q => {
+  if(q.action === "delete") pendingDeletes.add(q.name);
+  else pendingConfirms.add(q.name);
+});
+
+async function sendToServer(payload){
+  if(!apiUrl) return false;
+  if(USE_FB){
+    try{ await fbSend(payload); return true; }
+    catch(e){ if(!lastApiError || e.message.indexOf("http") !== 0) lastApiError = "réseau"; return false; }
+  }
+  try{
+    // no-cors: Apps Script doesn't send CORS headers on POST responses, so
+    // we fire the write without trying to read the (opaque) response.
+    // keepalive: lets the request finish in the background even if the
+    // page reloads/closes right after (fetch would otherwise be aborted).
+    await fetch(apiUrl, {
+      method:"POST",
+      mode:"no-cors",
+      keepalive:true,
+      body: JSON.stringify(payload)
+    });
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+// ---- Write confirmation --------------------------------------------
+// A no-cors POST only tells us the request LEFT the browser — Apps Script
+// gives no CORS headers on POST, so we can't read whether it actually ran
+// server-side. If Google briefly serves an error/transition page (e.g.
+// while a new deployment is being swapped in), the fetch still "succeeds"
+// from the browser's point of view even though nothing was written. To
+// catch that, every write is followed by a real GET (which does have CORS
+// headers, so the response is readable) to confirm the server's data now
+// matches what we sent — and retried automatically if it doesn't.
+const VERIFY_DELAY_MS = 1100;
+const MAX_VERIFY_ATTEMPTS = 3; // includes the first send
+
+// name -> increasing counter. Lets an update/delete abandon its own
+// verification if a *newer* write for the same product started in the
+// meantime, so a slow retry can never overwrite a more recent value.
+let writeGeneration = {};
+
+async function verifyWrite(payload){
+  // 1) lecture directe de la feuille : rapide, et c'est la vérité (ce qui est
+  //    réellement écrit). Si elle confirme, inutile de solliciter le script.
+  const fast = await gvizGet();
+  if(fast && writeMatches(fast, payload)) return true;
+  // 2) sinon (pas de lecture directe, ou valeur pas encore visible) : le script
+  //    tranche, comme avant.
+  const products = await apiGet();
+  if(!products) return null; // couldn't check right now — not a confirmed failure
+  return writeMatches(products, payload);
+}
+function writeMatches(products, payload){
+  const found = products.find(p => p.name === payload.name);
+  if(payload.action === "delete") return !found;
+  if(payload.action === "update"){
+    if(!found) return false;
+    const wantTarget = (payload.target === null || payload.target === undefined || payload.target === "") ? null : Number(payload.target);
+    const gotTarget = (found.target === null || found.target === undefined) ? null : Number(found.target);
+    return Number(found.base) === Number(payload.base) && gotTarget === wantTarget;
+  }
+  return true;
+}
+
+async function sendAndVerify(payload, isStillCurrent){
+  const stillCurrent = () => !isStillCurrent || isStillCurrent();
+  if(USE_FB){
+    // la réponse de Firebase est lisible : « ok » = écrit, pas besoin de relire
+    if(!stillCurrent()) return true;
+    return await sendToServer(payload);
+  }
+  for(let attempt = 0; attempt < MAX_VERIFY_ATTEMPTS; attempt++){
+    if(!stillCurrent()) return true; // a newer write took over — nothing left to confirm here
+    const sent = await sendToServer(payload);
+    if(!sent) return false; // real connectivity loss — queue it, no point verifying yet
+    await new Promise(r => setTimeout(r, VERIFY_DELAY_MS));
+    if(!stillCurrent()) return true;
+    const confirmed = await verifyWrite(payload);
+    if(confirmed === true) return true;
+    if(confirmed === null) return true; // couldn't check — trust the send rather than loop forever
+    // confirmed === false: genuine mismatch, loop and resend
+  }
+  return false;
+}
+
+async function apiUpdate(name, base, target){
+  if(!apiUrl) return;
+  const payload = {action:"update", name, base, target, user:getUsername()};
+  noteActivity(); // modification locale : on sonde plus vite pendant quelques secondes
+  pendingConfirms.add(name); // protect from mergeServerData until confirmed
+  // cette écriture remplace toute ancienne en attente pour ce produit
+  if(writeQueue.some(q => q.name === name)){
+    writeQueue = writeQueue.filter(q => q.name !== name);
+    saveQueue();
+  }
+  const myGen = (writeGeneration[name] = (writeGeneration[name] || 0) + 1);
+  const isStillCurrent = () => writeGeneration[name] === myGen;
+  const ok = await sendAndVerify(payload, isStillCurrent);
+  if(ok){
+    // seulement si aucune écriture plus récente n'a pris le relais : sinon
+    // c'est elle qui doit garder la protection contre le poll
+    if(isStillCurrent()) pendingConfirms.delete(name);
+  } else if(isStillCurrent()){
+    queueWrite(payload);
+    showToast(navigator.onLine
+      ? `"${name}" : le serveur n'a pas confirmé — nouvelle tentative en cours`
+      : "Hors-ligne : sera envoyé à la reconnexion");
+    // stays in pendingConfirms until the queued retry is confirmed
+  }
+}
+
+async function apiDelete(name){
+  if(!apiUrl) return;
+  noteActivity();
+  pendingDeletes.add(name);
+  if(writeQueue.some(q => q.name === name)){
+    writeQueue = writeQueue.filter(q => q.name !== name);
+    saveQueue();
+  }
+  const payload = {action:"delete", name, user:getUsername()};
+  const myGen = (writeGeneration[name] = (writeGeneration[name] || 0) + 1);
+  const isStillCurrent = () => writeGeneration[name] === myGen;
+  const ok = await sendAndVerify(payload, isStillCurrent);
+  if(ok){
+    if(isStillCurrent()) pendingDeletes.delete(name);
+  } else if(isStillCurrent()){
+    queueWrite(payload);
+    showToast(navigator.onLine
+      ? `Suppression de "${name}" non confirmée — nouvelle tentative en cours`
+      : "Hors-ligne : la suppression sera envoyée à la reconnexion");
+    // stays in pendingDeletes until the queued retry is confirmed, so a
+    // poll in the meantime can't resurrect the product we just deleted
+  }
+}
+
+let flushing = false;
+async function flushQueue(){
+  // verrou : le poll appelle flushQueue toutes les 3 s, sans ça plusieurs
+  // rejeux du même envoi se chevauchent (le poll l'appelle à chaque tour)
+  if(flushing || writeQueue.length === 0 || !apiUrl) return;
+  flushing = true;
+  try{
+    const hadItems = writeQueue.length;
+    const batch = writeQueue.slice();
+    for(const payload of batch){
+      const name = payload.name;
+      const gen = (writeGeneration[name] = (writeGeneration[name] || 0) + 1);
+      const isStillCurrent = () => writeGeneration[name] === gen;
+      const ok = await sendAndVerify(payload, isStillCurrent);
+      if(!isStillCurrent()) continue; // une écriture plus récente a pris le relais
+      if(ok){
+        writeQueue = writeQueue.filter(q => q !== payload);
+        if(payload.action === "delete") pendingDeletes.delete(name);
+        else pendingConfirms.delete(name);
+      }
+    }
+    saveQueue();
+    if(writeQueue.length === 0 && hadItems > 0){
+      showToast("Modifications en attente envoyées et confirmées");
+    }
+    safeRender();
+  } finally {
+    flushing = false;
+    if(USE_FB && writeQueue.length) scheduleFlush(3000);
+  }
+}
+let flushTimer = null;
+function scheduleFlush(ms){
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushQueue, ms);
+}
+window.addEventListener("online", flushQueue);
+
+async function apiSeed(list){
+  if(!apiUrl) return;
+  if(USE_FB) return fbSeed(list);
+  try{
+    await fetch(apiUrl, {
+      method:"POST",
+      mode:"no-cors",
+      keepalive:true,
+      body: JSON.stringify({action:"seed", products: list})
+    });
+  }catch(e){ /* ignore */ }
+}
+
+function mergeServerData(serverProducts){
+  if(!serverProducts) return;
+  // Si la feuille contient deux lignes au même nom (doublon), on retient la
+  // PREMIÈRE : c'est celle que le serveur met à jour à chaque écriture. Retenir
+  // la dernière affichait une ancienne valeur sur les autres appareils.
+  const byName = {};
+  serverProducts.forEach(sp => { if(!(sp.name in byName)) byName[sp.name] = sp; });
+  products.forEach(p => {
+    const sp = byName[p.name];
+    // Ne jamais écraser une valeur locale dont l'envoi est en cours ou en
+    // file d'attente : sinon le poll (toutes les 3 à 5 s) ramène l'ancien stock
+    // du serveur avant que la modification y soit arrivée.
+    if(sp && !pendingConfirms.has(p.name)){
+      p.base = sp.base;
+      p.target = sp.target;
+    }
+  });
+  // remove local products the server no longer has — this is what makes a
+  // deletion done on ANOTHER device (phone, say) actually disappear here
+  // too. Skip anything with an add/update still in flight or queued on
+  // this device (pendingConfirms) so we never delete a product out from
+  // under someone who just added or edited it locally.
+  products = products.filter(p => byName[p.name] || pendingConfirms.has(p.name));
+  // add any product that exists on the server but not locally
+  // (skip ones we just asked the server to delete — avoids resurrecting
+  // a product if the delete request is still in flight)
+  serverProducts.forEach(sp => {
+    if(pendingDeletes.has(sp.name)) return;
+    if(!products.find(p => p.name === sp.name)){
+      products.push({
+        id: makeId(sp.name, products.length),
+        name: sp.name, base: sp.base, target: sp.target
+      });
+    }
+  });
+}
+
+// ---- Rendu sûr ---------------------------------------------------------
+// render() reconstruit toute la liste : les cartes sont remplacées, un champ
+// en cours de saisie perd le focus et un tap en cours est perdu. On ne le
+// fait donc que si les données ont réellement changé, et jamais pendant
+// qu'une fenêtre est ouverte ou qu'un champ est en cours de saisie.
+function dataSignature(){
+  return JSON.stringify(products.map(p => [p.name, p.base, p.target])) +
+    "|" + writeQueue.length;
+}
+function isUserBusy(){
+  if(document.getElementById("modalBackdrop").classList.contains("show")) return true;
+  const a = document.activeElement;
+  return !!(a && a.tagName === "INPUT" && a.closest("#list"));
+}
+let renderPending = false;
+function safeRender(){
+  if(isUserBusy()){ renderPending = true; return; }
+  renderPending = false;
+  render();
+  renderOrderBadge();
+}
+// la carte actuellement affichée pour ce produit (la référence prise au
+// moment du rendu peut avoir été remplacée entre-temps)
+function liveCard(p){
+  return document.querySelector(`.card[data-id="${p.id}"]`);
+}
+
+// On ne sonde que quand l'app est visible, et on resynchronise tout de suite
+// quand elle revient au premier plan. Juste après une activité (modification
+// faite ici, modification reçue d'un autre appareil, retour au premier plan),
+// on passe en rythme rapide pendant 20 s, puis on revient au rythme normal.
+// Lecture directe de la feuille (légère) : 4 s normal, 2 s rapide.
+// Repli sur le script Apps Script (lent, quota limité) : 10 s normal, 6 s rapide.
+const POLL_FAST_WINDOW_MS = 20000;
+let lastActivityAt = 0;
+function noteActivity(){ lastActivityAt = Date.now(); }
+function currentPollDelay(){
+  if(USE_FB && writeQueue.length) return 3000; // envoi en attente : on réessaie vite
+  if(USE_FB) return fbStreamOk ? 15000 : (Date.now() - lastActivityAt < POLL_FAST_WINDOW_MS ? 3000 : 5000);
+  const fast = Date.now() - lastActivityAt < POLL_FAST_WINDOW_MS;
+  if(lastSource === "script") return fast ? 6000 : 10000;
+  return fast ? 2000 : 4000;
+}
+// L'intervalle est mesuré de début de requête à début de requête (la durée de
+// la requête est déduite de l'attente), avec 1 s minimum entre deux requêtes.
+// pollLoopId : si startPolling() est rappelé (changement d'URL) pendant qu'une
+// requête est en cours, l'ancienne boucle s'arrête au lieu de doubler la nouvelle.
+let pollLoopId = 0;
+async function pollLoop(id){
+  const t0 = Date.now();
+  try{ await pollOnce(); }catch(e){ /* ignore, on réessaie au prochain tour */ }
+  if(id !== pollLoopId || !apiUrl) return;
+  syncPollTimer = setTimeout(() => pollLoop(id), Math.max(1000, currentPollDelay() - (Date.now() - t0)));
+}
+function startPolling(){
+  clearTimeout(syncPollTimer);
+  if(USE_FB && apiUrl) fbStartStream();
+  const id = ++pollLoopId;
+  if(!apiUrl) return;
+  syncPollTimer = setTimeout(() => pollLoop(id), currentPollDelay());
+}
+let pollBusy = false;
+let pollStartedAt = 0;
+let lastSyncOkAt = 0;   // dernière lecture serveur réussie
+let pollFailing = false; // la dernière tentative de lecture a échoué
+let resumedAt = Date.now(); // dernier retour au premier plan (ou chargement)
+function updateSyncLabel(){
+  const el = document.getElementById("syncLive");
+  if(!el) return;
+  if(!apiUrl){ el.className = "sync-status"; el.textContent = "○ Mode local"; return; }
+  const age = lastSyncOkAt ? Math.round((Date.now() - lastSyncOkAt) / 1000) : null;
+  const sinceResume = (Date.now() - resumedAt) / 1000;
+  if(age !== null && age <= 25 && !pollFailing){
+    el.className = "sync-status on"; el.textContent = "● Synchronisé";
+    el.style.color = "";
+    return;
+  }
+  // Alerte seulement si une lecture a réellement échoué, ou si rien n'est
+  // revenu depuis 30 s alors que l'app est au premier plan. Juste après un
+  // retour au premier plan, le compteur affiche l'ancienne synchro : ce n'est
+  // pas une panne, la première lecture est simplement en cours.
+  if(pollFailing || sinceResume > 30){
+    const depuis = age === null ? "" : (age < 90 ? ` depuis ${age} s` : ` depuis ${Math.round(age / 60)} min`);
+    el.className = "sync-status"; el.style.color = "var(--warn)";
+    el.textContent = `⚠ Pas de synchro${depuis}` + (lastApiError ? ` · ${lastApiError}` : "");
+    return;
+  }
+  el.className = "sync-status"; el.style.color = "";
+  el.textContent = "↻ Mise à jour…";
+}
+setInterval(updateSyncLabel, 2000);
+async function pollOnce(){
+  if(document.hidden) return;
+  // verrou déjà pris depuis trop longtemps : la requête précédente est perdue
+  if(pollBusy && Date.now() - pollStartedAt < GVIZ_TIMEOUT_MS + GET_TIMEOUT_MS + 5000) return;
+  pollBusy = true;
+  pollStartedAt = Date.now();
+  try{
+    const serverProducts = await apiGetFast();
+    if(!serverProducts){ pollFailing = true; updateSyncLabel(); }
+    if(serverProducts){
+      lastSyncOkAt = Date.now();
+      pollFailing = false; lastApiError = "";
+      updateSyncLabel();
+      const before = dataSignature();
+      mergeServerData(serverProducts);
+      saveData(true);
+      if(dataSignature() !== before){ noteActivity(); safeRender(); }
+      else if(renderPending) safeRender();
+      flushQueue();
+    }
+  } finally {
+    pollBusy = false;
+    if(pollAgain){ pollAgain = false; setTimeout(pollOnce, 0); }
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  if(USE_FB){ if(document.hidden) fbStopStream(); else if(apiUrl) fbStartStream(); }
+  if(!document.hidden && apiUrl){ resumedAt = Date.now(); pollFailing = false; noteActivity(); pollOnce(); }
+});
+
+function exportCsv(){
+  const ds = inventoryDataset();
+  downloadFile(ds.file + ".csv", makeCsv(ds.header, ds.rows));
+}
+
+function openSyncModal(){
+  const backdrop = document.getElementById("modalBackdrop");
+  const box = document.getElementById("modalBox");
+  if(USE_FB){
+    box.innerHTML = `
+      <p>Synchronisation partagée</p>
+      <div class="modal-sub">Synchronisation en temps réel active (Firebase). Rien à configurer.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="mCancel" style="width:100%;">Fermer</button>
+      </div>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="modal-cancel" id="mForceSync" style="width:100%;">Forcer synchro complète (renvoyer les ${products.length} produits)</button>
+      </div>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="modal-cancel" id="mExportCsv" style="width:100%;">Exporter en CSV (sauvegarde locale)</button>
+      </div>`;
+    backdrop.classList.add("show");
+    document.getElementById("mCancel").onclick = () => backdrop.classList.remove("show");
+    document.getElementById("mExportCsv").onclick = () => { exportCsv(); backdrop.classList.remove("show"); };
+    document.getElementById("mForceSync").onclick = async () => {
+      showToast("Envoi en cours…");
+      await fbSeed(products.map(p => ({name:p.name, base:p.base, target:p.target})));
+      const sp = await fbGet();
+      if(sp){ mergeServerData(sp); saveData(true); showToast("Tous les produits envoyés"); }
+      else showToast("Échec de l'envoi");
+      backdrop.classList.remove("show");
+      render(); renderOrderBadge();
+    };
+    return;
+  }
+  box.innerHTML = `
+    <p>Synchronisation partagée</p>
+    <div class="modal-sub">Colle ici l'URL de ton Google Apps Script (se terminant par /exec). Laisse vide pour rester en mode local.</div>
+    <input type="text" id="mUrlInput" placeholder="https://script.google.com/macros/s/.../exec" value="${esc(apiUrl)}" style="font-family:var(--mono); font-size:12px;">
+    <div class="modal-actions">
+      <button class="modal-cancel" id="mCancel">Annuler</button>
+      <button class="modal-confirm" id="mOk">Enregistrer</button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="modal-cancel" id="mForceSync" style="width:100%;">Forcer synchro complète (renvoyer les ${products.length} produits)</button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="modal-cancel" id="mExportCsv" style="width:100%;">Exporter en CSV (sauvegarde locale)</button>
+    </div>`;
+  backdrop.classList.add("show");
+  document.getElementById("mCancel").onclick = () => backdrop.classList.remove("show");
+  document.getElementById("mExportCsv").onclick = () => {
+    exportCsv();
+    backdrop.classList.remove("show");
+  };
+  document.getElementById("mForceSync").onclick = async () => {
+    const val = document.getElementById("mUrlInput").value.trim();
+    if(!val){ showToast("Renseigne d'abord une URL"); return; }
+    apiUrl = val;
+    localStorage.setItem(API_URL_KEY, apiUrl);
+    showToast("Envoi en cours…");
+    await apiSeed(products.map(p => ({name:p.name, base:p.base, target:p.target})));
+    const serverProducts = await apiGet();
+    if(serverProducts){
+      mergeServerData(serverProducts);
+      saveData(true);
+      showToast("Tous les produits envoyés");
+    } else {
+      showToast("Échec de l'envoi — vérifie l'URL");
+    }
+    backdrop.classList.remove("show");
+    render();
+    renderOrderBadge();
+    startPolling();
+    if(apiUrl && !getUsername()) openUserModal();
+  };
+  document.getElementById("mOk").onclick = async () => {
+    const val = document.getElementById("mUrlInput").value.trim();
+    apiUrl = val;
+    localStorage.setItem(API_URL_KEY, apiUrl);
+    backdrop.classList.remove("show");
+    if(apiUrl){
+      showToast("Connexion…");
+      await apiSeed(products.map(p => ({name:p.name, base:p.base, target:p.target})));
+      const serverProducts = await apiGet();
+      if(serverProducts){
+        mergeServerData(serverProducts);
+        saveData(true);
+        showToast("Synchronisation activée");
+      } else {
+        showToast("Impossible de joindre le script — vérifie l'URL");
+      }
+    } else {
+      showToast("Mode local");
+    }
+    render();
+    renderOrderBadge();
+    startPolling();
+    if(apiUrl && !getUsername()) openUserModal();
+  };
+}
+
+// ---- Admin / access control -------------------------------------------
+async function requireAdmin(){
+  const v = await customPrompt("Code admin", "");
+  if(v === null) return false;
+  if(String(v).trim() === ADMIN_PIN) return true;
+  showToast("Code incorrect");
+  return false;
+}
+
+function canManageStructure(){
+  return STRUCTURE_USERS.includes(getUsername());
+}
+
+async function requireStructureAccess(){
+  if(canManageStructure()) return true;
+  return await requireAdmin();
+}
+
+document.getElementById("openSync").addEventListener("click", async () => {
+  if(await requireAdmin()) openSyncModal();
+});
+
+// ---- User identification (fixed list, locked once chosen) -------------
+
+// Le bouton Historique n'est même pas affiché pour les utilisateurs hors
+// HISTORY_USERS : ils ne doivent pas savoir que la fonctionnalité existe
+// (pas juste verrouillée par code). Rappel : masquage côté interface
+// uniquement, pas une vraie sécurité — visible dans le code source.
+function updateHistoryVisibility(){
+  const btn = document.getElementById("openHistory");
+  if(!btn) return;
+  btn.style.display = HISTORY_USERS.includes(getUsername()) ? "" : "none";
+}
+
+function openUserPicker(){
+  const backdrop = document.getElementById("modalBackdrop");
+  const box = document.getElementById("modalBox");
+  box.innerHTML = `
+    <p>Qui es-tu ?</p>
+    <div class="modal-sub">Ton nom sera associé à tes modifications dans l'historique.</div>
+    <div class="modal-actions" style="flex-direction:column; gap:8px;">
+      ${USERS_LIST.map(u => `<button class="modal-cancel" style="width:100%;" data-user="${u}">${u}</button>`).join("")}
+    </div>`;
+  backdrop.classList.add("show");
+  box.querySelectorAll("[data-user]").forEach(btn => {
+    btn.onclick = () => {
+      const u = btn.getAttribute("data-user");
+      localStorage.setItem(USER_KEY, u);
+      backdrop.classList.remove("show");
+      showToast(`Bonjour ${u}`);
+      updateHistoryVisibility();
+    };
+  });
+  backdrop.onclick = (e) => { if(e.target === backdrop) backdrop.classList.remove("show"); };
+}
+
+async function openUserModal(){
+  const current = getUsername();
+  if(!current){
+    openUserPicker();
+    return;
+  }
+  // name already set on this device — changing it requires the admin code
+  if(await requireAdmin()){
+    openUserPicker();
+  } else {
+    showToast(`Tu es identifié comme ${current}`);
+  }
+}
+document.getElementById("openUser").addEventListener("click", openUserModal);
+
+const actionLabels = { ajout: "Ajouté", maj: "Modifié", suppression: "Supprimé" };
+
+async function openHistorySheet(){
+  // Garde-fou en plus du masquage du bouton : même si quelqu'un ouvrait la
+  // fonction directement (ex. console du navigateur), l'accès reste bloqué
+  // pour les utilisateurs non autorisés.
+  if(!HISTORY_USERS.includes(getUsername())) return;
+  document.getElementById("historyBackdrop").classList.add("show");
+  document.getElementById("historySheet").classList.add("show");
+  const listEl = document.getElementById("historyList");
+  if(!apiUrl){
+    listEl.innerHTML = `<div class="sheet-empty">L'historique n'existe qu'en mode synchronisé (synchronisation requise).</div>`;
+    return;
+  }
+  listEl.innerHTML = `<div class="sheet-empty">Chargement…</div>`;
+  const log = await apiGetLog(200);
+  if(!log){
+    listEl.innerHTML = `<div class="sheet-empty">Impossible de charger l'historique pour le moment.</div>`;
+    return;
+  }
+  if(log.length === 0){
+    listEl.innerHTML = `<div class="sheet-empty">Aucune modification enregistrée pour l'instant.</div>`;
+    return;
+  }
+  listEl.innerHTML = log.map(entry => {
+    const d = new Date(entry.timestamp);
+    const when = isNaN(d) ? entry.timestamp : d.toLocaleString("fr-BE", {day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit"});
+    const label = actionLabels[entry.action] || entry.action;
+    const qty = entry.action === "suppression"
+      ? ""
+      : ` · stock ${entry.base}${entry.target !== null && entry.target !== undefined ? ` (cible ${entry.target})` : ""}`;
+    return `
+      <div class="order-item" style="flex-direction:column; align-items:flex-start; gap:3px; padding:10px 0;">
+        <div style="display:flex; justify-content:space-between; width:100%; font-size:11.5px; color:#8a9497;">
+          <span>${when}</span>
+          <span>${esc(entry.user || "Inconnu")}</span>
+        </div>
+        <div style="font-size:13.5px;">${esc(label)} — ${esc(entry.name)}${qty}</div>
+      </div>`;
+  }).join("");
+}
+function closeHistorySheet(){
+  document.getElementById("historyBackdrop").classList.remove("show");
+  document.getElementById("historySheet").classList.remove("show");
+}
+document.getElementById("openHistory").addEventListener("click", openHistorySheet);
+document.getElementById("closeHistory").addEventListener("click", closeHistorySheet);
+document.getElementById("historyBackdrop").addEventListener("click", closeHistorySheet);
+
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=> t.classList.remove("show"), 1100);
+}
+
+const UNDO_WINDOW_MS = 8000;
+
+function showActionToast(msg, actionLabel, onAction, duration){
+  const t = document.getElementById("toast");
+  t.innerHTML = `<span>${msg}</span> <button id="toastAction" style="margin-left:10px; background:none; border:none; color:#fff; text-decoration:underline; font-weight:600; font-size:12.5px; padding:0;">${actionLabel}</button>`;
+  t.classList.add("show");
+  clearTimeout(t._hideTimer);
+  document.getElementById("toastAction").onclick = () => {
+    t.classList.remove("show");
+    clearTimeout(t._hideTimer);
+    onAction();
+  };
+  t._hideTimer = setTimeout(()=> t.classList.remove("show"), duration || UNDO_WINDOW_MS);
+}
+
+function render(){
+  const list = document.getElementById("list");
+  const sub = document.getElementById("subline");
+
+  let visible = products.filter(p => normalize(p.name).includes(searchTerm));
+  if(currentFilter === "low"){
+    visible = visible.filter(p => restantOf(p) <= 2);
+  } else if(currentFilter === "order"){
+    visible = visible.filter(p => p.target !== null && p.target !== "" && (p.target - restantOf(p)) > 0);
+  }
+
+  visible = visible.slice().sort((a, b) => a.name.localeCompare(b.name, "fr", {sensitivity: "base"}));
+
+  const status = apiUrl
+    ? `<span class="sync-status on" id="syncLive">● Synchronisé</span>`
+    : `<span class="sync-status" id="syncLive">○ Mode local</span>`;
+  const queueBadge = writeQueue.length > 0
+    ? ` <span class="sync-status" style="color:var(--warn);">⏳ ${writeQueue.length} en attente</span>`
+    : "";
+  sub.innerHTML = `${products.length} produits · ${visible.length} affichés &nbsp;${status}${queueBadge}`;
+  updateSyncLabel();
+
+  if(visible.length === 0){
+    list.innerHTML = `<div class="empty">Aucun produit ne correspond</div>`;
+    return;
+  }
+
+  list.innerHTML = visible.map(p => {
+    const restant = restantOf(p);
+    let badgeClass = "restant-badge";
+    if(restant <= 0) badgeClass += " zero";
+    else if(restant <= 2) badgeClass += " low";
+
+    let orderLine = "";
+    if(p.target !== null && p.target !== "" && !isNaN(p.target)){
+      const toOrder = p.target - restant;
+      orderLine = `<div class="order-line ${toOrder<=0 ? 'zero':''}">
+        <span>À commander</span><b>${toOrder > 0 ? toOrder : 0}</b>
+      </div>`;
+    }
+
+    return `
+    <div class="card" data-id="${p.id}">
+      <div class="row1">
+        <div class="name-wrap">
+          <div class="product-icon">${productIconSvg(p.name)}</div>
+          <div class="name">${esc(p.name)}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div class="${badgeClass}">${restant}</div>
+          <button class="edit-btn" title="Renommer ce produit">✏️</button>
+          <button class="del-btn" title="Supprimer ce produit">✕</button>
+        </div>
+      </div>
+      <div class="row2">
+        <div style="display:flex; align-items:center;">
+          <span class="stepper-label">Stock</span>
+          <div class="stepper">
+            <button class="minus" aria-label="moins">−</button>
+            <span class="count restant-count">${restant}</span>
+            <button class="plus" aria-label="plus">+</button>
+          </div>
+        </div>
+        <div class="target-wrap">
+          <label>Cible</label>
+          <input type="number" inputmode="numeric" class="target-input" value="${p.target === null ? '' : p.target}" placeholder="—">
+        </div>
+      </div>
+      ${orderLine}
+    </div>`;
+  }).join("");
+
+  // wire events
+  list.querySelectorAll(".card").forEach(card => {
+    const id = card.getAttribute("data-id");
+    const p = products.find(x => x.id === id);
+
+    card.querySelector(".plus").addEventListener("click", async () => {
+      const ok = await customConfirm(`Ajouter 1 à "${esc(p.name)}" ?`, `Stock actuel : ${p.base}`);
+      if(!ok) return;
+      p.base += 1;
+      updateCard(liveCard(p), p);
+      saveDataDebounced();
+      renderOrderBadge();
+      apiUpdate(p.name, p.base, p.target);
+    });
+    card.querySelector(".minus").addEventListener("click", async () => {
+      if(p.base <= 0) return;
+      const ok = await customConfirm(`Retirer 1 à "${esc(p.name)}" ?`, `Stock actuel : ${p.base}`);
+      if(!ok) return;
+      p.base = Math.max(0, p.base - 1);
+      updateCard(liveCard(p), p);
+      saveDataDebounced();
+      renderOrderBadge();
+      apiUpdate(p.name, p.base, p.target);
+    });
+    card.querySelector(".restant-count").addEventListener("click", async () => {
+      const v = await customPrompt(`Nouveau stock pour "${esc(p.name)}"`, p.base);
+      if(v === null) return;
+      const n = parseInt(v, 10);
+      if(!isNaN(n) && n >= 0){
+        p.base = n;
+        updateCard(liveCard(p), p);
+        saveDataDebounced();
+        renderOrderBadge();
+        apiUpdate(p.name, p.base, p.target);
+      }
+    });
+    card.querySelector(".target-input").addEventListener("change", (e) => {
+      const v = e.target.value;
+      p.target = v === "" ? null : Number(v);
+      updateCard(liveCard(p), p);
+      saveDataDebounced();
+      renderOrderBadge();
+      apiUpdate(p.name, p.base, p.target);
+    });
+    card.querySelector(".edit-btn").addEventListener("click", async () => {
+      if(!(await requireStructureAccess())) return;
+      openRenameModal(p);
+    });
+    card.querySelector(".del-btn").addEventListener("click", async () => {
+      if(!(await requireStructureAccess())) return;
+      const ok = await customConfirm(`Supprimer "${esc(p.name)}" ?`, `Cette action est définitive après ${UNDO_WINDOW_MS/1000}s (tu peux annuler juste après).`);
+      if(!ok) return;
+
+      const snapshot = { ...p };
+      const restoreIndex = products.findIndex(x => x.id === p.id);
+      products = products.filter(x => x.id !== p.id);
+      pendingDeletes.add(snapshot.name); // block resurrection during the undo window too
+      saveData(true);
+      render();
+      renderOrderBadge();
+
+      let undone = false;
+      const timer = setTimeout(() => {
+        if(!undone) apiDelete(snapshot.name);
+      }, UNDO_WINDOW_MS);
+
+      showActionToast(`"${esc(snapshot.name)}" supprimé`, "Annuler", () => {
+        undone = true;
+        clearTimeout(timer);
+        pendingDeletes.delete(snapshot.name);
+        const idx = Math.min(restoreIndex, products.length);
+        products.splice(idx, 0, snapshot);
+        saveData(true);
+        render();
+        renderOrderBadge();
+      });
+    });
+  });
+}
+
+function openRenameModal(p){
+  const backdrop = document.getElementById("modalBackdrop");
+  const box = document.getElementById("modalBox");
+  box.innerHTML = `
+    <p>Renommer le produit</p>
+    <div class="modal-sub">Nouveau nom</div>
+    <input type="text" id="mRenName" value="${esc(p.name)}">
+    <div class="modal-actions">
+      <button class="modal-cancel" id="mRenCancel">Annuler</button>
+      <button class="modal-confirm" id="mRenOk">Renommer</button>
+    </div>`;
+  backdrop.classList.add("show");
+  const input = document.getElementById("mRenName");
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+  document.getElementById("mRenCancel").onclick = () => backdrop.classList.remove("show");
+  document.getElementById("mRenOk").onclick = () => {
+    const newName = input.value.trim();
+    const oldName = p.name;
+    if(!newName){ showToast("Nom requis"); return; }
+    if(newName === oldName){ backdrop.classList.remove("show"); return; }
+    if(products.some(x => x !== p && x.name.toLowerCase() === newName.toLowerCase())){
+      showToast("Ce nom existe déjà");
+      return;
+    }
+    p.name = newName;
+    saveData(true);
+    // le serveur ne connaît pas le renommage : on crée le nouveau nom (avec le même
+    // stock/cible) puis on supprime l'ancien. L'ancien est protégé du poll entre-temps.
+    pendingDeletes.add(oldName);
+    backdrop.classList.remove("show");
+    render();
+    renderOrderBadge();
+    showToast("Produit renommé");
+    apiUpdate(newName, p.base, p.target).then(() => apiDelete(oldName));
+  };
+}
+
+function openAddModal(){
+  const backdrop = document.getElementById("modalBackdrop");
+  const box = document.getElementById("modalBox");
+  box.innerHTML = `
+    <p>Ajouter un produit</p>
+    <div class="modal-sub">Nom du produit</div>
+    <input type="text" id="mNewName" placeholder="Ex : Lessive poudre 5kg">
+    <div class="modal-sub">Stock initial</div>
+    <input type="number" inputmode="numeric" id="mNewStock" value="0">
+    <div class="modal-actions">
+      <button class="modal-cancel" id="mAddCancel">Annuler</button>
+      <button class="modal-confirm" id="mAddOk">Ajouter</button>
+    </div>`;
+  backdrop.classList.add("show");
+  document.getElementById("mAddCancel").onclick = () => backdrop.classList.remove("show");
+  document.getElementById("mAddOk").onclick = () => {
+    const name = document.getElementById("mNewName").value.trim();
+    const stock = parseInt(document.getElementById("mNewStock").value, 10);
+    if(!name){ showToast("Nom requis"); return; }
+    if(products.find(p => p.name.toLowerCase() === name.toLowerCase())){
+      showToast("Ce produit existe déjà");
+      return;
+    }
+    const p = { id: makeId(name, products.length), name, base: isNaN(stock) ? 0 : Math.max(0, stock), target: null };
+    products.push(p);
+    saveData(true);
+    apiUpdate(p.name, p.base, p.target);
+    backdrop.classList.remove("show");
+    render();
+    renderOrderBadge();
+    showToast("Produit ajouté");
+  };
+}
+document.getElementById("openAdd").addEventListener("click", async () => {
+  if(await requireStructureAccess()) openAddModal();
+});
+
+function updateCard(card, p){
+  if(!card) return;
+  const restant = restantOf(p);
+  card.querySelector(".restant-count").textContent = restant;
+  const badge = card.querySelector(".restant-badge");
+  badge.textContent = restant;
+  badge.className = "restant-badge" + (restant<=0 ? " zero" : restant<=2 ? " low" : "");
+
+  let orderLine = card.querySelector(".order-line");
+  if(p.target !== null && p.target !== "" && !isNaN(p.target)){
+    const toOrder = p.target - restant;
+    const html = `<span>À commander</span><b>${toOrder > 0 ? toOrder : 0}</b>`;
+    if(orderLine){
+      orderLine.className = "order-line" + (toOrder<=0 ? " zero" : "");
+      orderLine.innerHTML = html;
+    } else {
+      orderLine = document.createElement("div");
+      orderLine.className = "order-line" + (toOrder<=0 ? " zero" : "");
+      orderLine.innerHTML = html;
+      card.appendChild(orderLine);
+    }
+  } else if(orderLine){
+    orderLine.remove();
+  }
+}
+
+document.getElementById("search").addEventListener("input", (e) => {
+  searchTerm = normalize(e.target.value);
+  render();
+});
+
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentFilter = chip.getAttribute("data-filter");
+    render();
+  });
+});
+
+function getOrderItems(){
+  return products
+    .map(p => ({ name: p.name, toOrder: (p.target !== null && p.target !== "" && !isNaN(p.target)) ? (p.target - restantOf(p)) : 0 }))
+    .filter(x => x.toOrder > 0);
+}
+
+function renderOrderBadge(){
+  document.getElementById("orderCount").textContent = getOrderItems().length;
+}
+
+function renderOrderSheet(){
+  const items = getOrderItems();
+  const listEl = document.getElementById("orderList");
+  if(items.length === 0){
+    listEl.innerHTML = `<div class="sheet-empty">Rien à commander pour l'instant.<br>Renseigne un "Stock cible" sur les produits pour suivre les manques.</div>`;
+  } else {
+    listEl.innerHTML = items.map(it => `
+      <div class="order-item"><span>${esc(it.name)}</span><b>${it.toOrder}</b></div>
+    `).join("");
+  }
+
+  // printable version
+  const today = new Date().toLocaleDateString("fr-BE");
+  document.getElementById("printArea").innerHTML = `
+    <h2 style="font-family:sans-serif;">Commande stock buanderie Bierset — ${today}</h2>
+    ${items.length === 0 ? "<p>Rien à commander.</p>" : `
+    <table style="width:100%; border-collapse:collapse; font-family:sans-serif; font-size:14px;">
+      <thead><tr>
+        <th style="text-align:left; border-bottom:2px solid #333; padding:6px 4px;">Produit</th>
+        <th style="text-align:right; border-bottom:2px solid #333; padding:6px 4px;">Quantité</th>
+      </tr></thead>
+      <tbody>
+        ${items.map(it => `<tr>
+          <td style="padding:6px 4px; border-bottom:1px solid #ccc;">${esc(it.name)}</td>
+          <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:right;">${it.toOrder}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`}
+  `;
+}
+
+function openOrderSheet(){
+  renderOrderSheet();
+  document.getElementById("sheetBackdrop").classList.add("show");
+  document.getElementById("orderSheet").classList.add("show");
+}
+function closeOrderSheet(){
+  document.getElementById("sheetBackdrop").classList.remove("show");
+  document.getElementById("orderSheet").classList.remove("show");
+}
+
+document.getElementById("openOrder").addEventListener("click", openOrderSheet);
+document.getElementById("closeOrder").addEventListener("click", closeOrderSheet);
+document.getElementById("sheetBackdrop").addEventListener("click", closeOrderSheet);
+
+document.getElementById("printOrder").addEventListener("click", () => {
+  window.print();
+});
+
+document.getElementById("mailOrder").addEventListener("click", () => {
+  const items = getOrderItems();
+  const today = new Date().toLocaleDateString("fr-BE");
+  const subject = `Commande stock buanderie Bierset - ${today}`;
+  let body = items.length === 0
+    ? "Rien à commander pour l'instant."
+    : items.map(it => `- ${it.name} : ${it.toOrder}`).join("\n");
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+});
+
+
+// ---- Export lisible : inventaire et historique -------------------------
+// Trois sorties pour chaque jeu de données : impression / PDF (mise en page
+// propre), fichier tableur (CSV à points-virgules, s'ouvre en colonnes dans
+// Excel/Numbers en français) et partage (feuille de partage de l'iPhone).
+function csvCell(v){
+  const t = String(v == null ? "" : v);
+  return /[;"\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function makeCsv(header, rows){
+  return "﻿" + [header].concat(rows).map(r => r.map(csvCell).join(";")).join("\r\n");
+}
+function fmtDateTime(ts){
+  const d = new Date(ts);
+  return isNaN(d) ? String(ts) : d.toLocaleString("fr-BE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+}
+function fmtDelta(n){
+  if(n === "" || n == null) return "";
+  return n > 0 ? "+" + n : n < 0 ? "−" + Math.abs(n) : "0";
+}
+function todayIso(){ return new Date().toISOString().slice(0, 10); }
+
+function inventoryDataset(){
+  const list = products.slice().sort((a, b) => a.name.localeCompare(b.name, "fr", {sensitivity:"base"}));
+  const rows = list.map(p => {
+    const hasTarget = p.target !== null && p.target !== "" && !isNaN(p.target);
+    const toOrder = hasTarget ? Math.max(0, p.target - p.base) : "";
+    const state = p.base <= 0 ? "Rupture" : p.base <= 2 ? "Stock bas" : "OK";
+    return [p.name, p.base, hasTarget ? p.target : "", toOrder, state];
+  });
+  const rupture = rows.filter(r => r[4] === "Rupture").length;
+  const bas = rows.filter(r => r[4] === "Stock bas").length;
+  const toBuy = rows.filter(r => r[3] !== "" && r[3] > 0).length;
+  return {
+    kind: "inv",
+    title: "Inventaire — buanderie Bierset",
+    file: "inventaire-bierset-" + todayIso(),
+    header: ["Produit", "Stock", "Cible", "À commander", "État"],
+    rows,
+    summary: `${rows.length} produits · ${rupture} en rupture · ${bas} en stock bas · ${toBuy} à commander`,
+    numCols: [1, 2, 3],
+    rowState: r => r[4] === "Rupture" ? "rupture" : r[4] === "Stock bas" ? "bas" : ""
+  };
+}
+
+function historyDataset(log){
+  // calcule la variation de stock : on rejoue les entrées dans l'ordre chrono
+  const ts = e => { const t = new Date(e.timestamp).getTime(); return isNaN(t) ? 0 : t; };
+  const asc = log.slice().sort((a, b) => ts(a) - ts(b));
+  const last = {};
+  const enriched = asc.map(e => {
+    let delta = "";
+    if(e.action === "suppression"){
+      delete last[e.name];
+    } else {
+      const prev = last[e.name];
+      if(e.action === "maj" && prev !== undefined && e.base != null && !isNaN(e.base)) delta = Number(e.base) - Number(prev);
+      if(e.base != null) last[e.name] = e.base;
+    }
+    return {e, delta};
+  }).reverse(); // le plus récent en premier
+  const rows = enriched.map(({e, delta}) => [
+    fmtDateTime(e.timestamp),
+    e.user || "Inconnu",
+    actionLabels[e.action] || e.action,
+    e.name,
+    e.action === "suppression" || e.base == null ? "" : e.base,
+    fmtDelta(delta),
+    e.action === "suppression" || e.target == null ? "" : e.target
+  ]);
+  const first = asc.length ? fmtDateTime(asc[0].timestamp) : "";
+  const lastD = asc.length ? fmtDateTime(asc[asc.length - 1].timestamp) : "";
+  return {
+    kind: "hist",
+    title: "Historique des modifications",
+    file: "historique-bierset-" + todayIso(),
+    header: ["Date", "Qui", "Action", "Produit", "Stock", "Variation", "Cible"],
+    rows,
+    summary: rows.length ? `${rows.length} modifications · du ${first} au ${lastD}` : "Aucune modification enregistrée",
+    numCols: [4, 5, 6],
+    rowState: r => r[2] === "Supprimé" ? "rupture" : ""
+  };
+}
+
+function fmtDay(ts){
+  const d = new Date(ts);
+  return isNaN(d) ? "" : d.toLocaleDateString("fr-BE", {day:"2-digit", month:"2-digit", year:"numeric"});
+}
+
+// Récapitulatif des entrées de stock (variations positives) par date, avec le stock d'avant
+function entriesDataset(log){
+  const ts = e => { const t = new Date(e.timestamp).getTime(); return isNaN(t) ? 0 : t; };
+  const asc = log.slice().sort((a, b) => ts(a) - ts(b));
+  const last = {};
+  const out = [];
+  let unknown = 0;
+  asc.forEach(e => {
+    if(e.action === "suppression"){ delete last[e.name]; return; }
+    if(e.base == null || isNaN(e.base)) return;
+    const prev = last[e.name];
+    const now = Number(e.base);
+    if(e.action === "ajout"){
+      if(now > 0) out.push({e, avant: 0, plus: now, note: "nouveau produit"});
+    } else if(prev !== undefined){
+      if(now > Number(prev)) out.push({e, avant: Number(prev), plus: now - Number(prev), note: ""});
+    } else {
+      unknown++;
+    }
+    last[e.name] = now;
+  });
+  out.reverse();
+  const rows = out.map(o => [fmtDay(o.e.timestamp), o.e.name, o.avant, "+" + o.plus, o.avant + o.plus, o.e.user || "Inconnu", o.note]);
+  const total = out.reduce((a, o) => a + o.plus, 0);
+  const days = new Set(rows.map(r => r[0])).size;
+  return {
+    kind: "in",
+    title: "Entrées de stock par date",
+    file: "entrees-bierset-" + todayIso(),
+    header: ["Date", "Produit", "Avant", "Entrée", "Après", "Qui", "Remarque"],
+    rows,
+    summary: rows.length ? `${rows.length} entrées sur ${days} jour(s) · ${total} unités ajoutées` + (unknown ? ` · ${unknown} produit(s) sans stock antérieur connu ignoré(s)` : "") : "Aucune entrée de stock dans l'historique",
+    numCols: [2, 3, 4],
+    rowState: () => ""
+  };
+}
+
+function reportHtml(ds){
+  const who = getUsername() || "—";
+  const th = ds.header.map((h, i) => `<th style="text-align:${ds.numCols.includes(i) ? "right" : "left"}; border-bottom:2px solid #333; padding:6px 5px;">${esc(h)}</th>`).join("");
+  const body = ds.rows.map(r => {
+    const st = ds.rowState(r);
+    const style = st === "rupture" ? "color:#a8492f; font-weight:700;" : st === "bas" ? "color:#a8492f;" : "";
+    return "<tr>" + r.map((c, i) => `<td style="padding:5px; border-bottom:1px solid #ccc; ${ds.numCols.includes(i) ? "text-align:right;" : ""} ${style}">${esc(c)}</td>`).join("") + "</tr>";
+  }).join("");
+  return `
+    <h2 style="font-family:sans-serif; margin:0 0 4px;">${esc(ds.title)} — Buanderie Bierset</h2>
+    <p style="font-family:sans-serif; font-size:12px; color:#555; margin:0 0 4px;">Exporté le ${esc(fmtDateTime(new Date()))} par ${esc(who)}</p>
+    <p style="font-family:sans-serif; font-size:13px; margin:0 0 12px;"><b>${esc(ds.summary)}</b></p>
+    <table style="width:100%; border-collapse:collapse; font-family:sans-serif; font-size:12.5px;">
+      <thead><tr>${th}</tr></thead><tbody>${body}</tbody>
+    </table>`;
+}
+
+function readableText(ds){
+  if(ds.kind === "inv"){
+    return ds.title + " — " + fmtDateTime(new Date()) + "\n" + ds.summary + "\n\n" +
+      ds.rows.map(r => `${r[0]} : ${r[1]}` + (r[2] !== "" ? ` (cible ${r[2]}${r[3] > 0 ? ", à commander " + r[3] : ""})` : "") + (r[4] !== "OK" ? ` — ${r[4]}` : "")).join("\n");
+  }
+  if(ds.kind === "in"){
+    return ds.title + " — " + fmtDateTime(new Date()) + "\n" + ds.summary + "\n\n" +
+      ds.rows.map(r => `${r[0]} · ${r[1]} : ${r[2]} → ${r[4]} (${r[3]}) · ${r[5]}`).join("\n");
+  }
+  return ds.title + " — " + fmtDateTime(new Date()) + "\n" + ds.summary + "\n\n" +
+    ds.rows.map(r => `${r[0]} · ${r[1]} · ${r[2]} ${r[3]}` + (r[4] !== "" ? ` → stock ${r[4]}` : "") + (r[5] !== "" ? ` (${r[5]})` : "")).join("\n");
+}
+
+function downloadFile(name, content, type){
+  const blob = new Blob([content], {type: type || "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+async function shareDataset(ds){
+  const csv = makeCsv(ds.header, ds.rows);
+  const name = ds.file + ".csv";
+  try{
+    const file = new File([csv], name, {type: "text/csv"});
+    if(navigator.canShare && navigator.canShare({files: [file]})){
+      await navigator.share({files: [file], title: ds.title});
+      return;
+    }
+  }catch(e){ if(e && e.name === "AbortError") return; }
+  try{
+    if(navigator.share){
+      await navigator.share({title: ds.title, text: readableText(ds)});
+      return;
+    }
+  }catch(e){ if(e && e.name === "AbortError") return; }
+  downloadFile(name, csv);
+  showToast("Fichier enregistré");
+}
+
+async function getDataset(kind){
+  if(kind === "inv") return inventoryDataset();
+  if(!HISTORY_USERS.includes(getUsername())) return null;
+  if(!apiUrl){ showToast("L'historique n'existe qu'en mode synchronisé"); return null; }
+  showToast("Chargement de l'historique…");
+  const log = await apiGetLog(1000);
+  if(!log){ showToast("Impossible de charger l'historique"); return null; }
+  return kind === "in" ? entriesDataset(log) : historyDataset(log);
+}
+
+async function runExport(kind, act){
+  const ds = await getDataset(kind);
+  if(!ds) return;
+  if(act === "print"){
+    document.getElementById("printArea").innerHTML = reportHtml(ds);
+    window.print();
+  } else if(act === "csv"){
+    downloadFile(ds.file + ".csv", makeCsv(ds.header, ds.rows));
+    showToast("Fichier " + ds.file + ".csv");
+  } else if(act === "share"){
+    await shareDataset(ds);
+  }
+}
+
+function openExportSheet(){
+  const canHist = HISTORY_USERS.includes(getUsername());
+  const group = (kind, title, desc) => `
+    <div class="exp-group">
+      <h3>${title}</h3>
+      <div class="exp-desc">${desc}</div>
+      <div class="exp-actions">
+        <button class="exp-btn" data-kind="${kind}" data-act="print">🖨<br>Imprimer / PDF</button>
+        <button class="exp-btn" data-kind="${kind}" data-act="csv">📊<br>Tableur (.csv)</button>
+        <button class="exp-btn" data-kind="${kind}" data-act="share">📤<br>Partager</button>
+      </div>
+    </div>`;
+  const body = document.getElementById("exportBody");
+  body.innerHTML =
+    group("inv", "Inventaire actuel", "Produit, stock, cible, quantité à commander et état.") +
+    (canHist ? group("in", "Entrées de stock par date", "Produits rentrés (variation positive) par date, avec le stock d'avant.") + group("hist", "Historique des modifications", "Date, qui, action, produit, stock, variation (jusqu'à 1000 dernières).") : "");
+  body.querySelectorAll("[data-act]").forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try{ await runExport(btn.dataset.kind, btn.dataset.act); } finally { btn.disabled = false; }
+    };
+  });
+  document.getElementById("exportBackdrop").classList.add("show");
+  document.getElementById("exportSheet").classList.add("show");
+}
+function closeExportSheet(){
+  document.getElementById("exportBackdrop").classList.remove("show");
+  document.getElementById("exportSheet").classList.remove("show");
+}
+document.getElementById("openExport").addEventListener("click", openExportSheet);
+document.getElementById("closeExport").addEventListener("click", closeExportSheet);
+document.getElementById("exportBackdrop").addEventListener("click", closeExportSheet);
+
+(async function init(){
+  document.getElementById("appVersion").textContent = "Version " + APP_VERSION;
+  updateHistoryVisibility();
+  await loadData();
+  render();
+  renderOrderBadge();
+  if(apiUrl){
+    const serverProducts = await apiGet();
+    if(serverProducts){
+      mergeServerData(serverProducts);
+      saveData(true);
+      render();
+      renderOrderBadge();
+      flushQueue();
+    }
+  }
+  startPolling();
+  if(apiUrl && !getUsername()){
+    openUserModal();
+  }
+})();
+</script>
+
+</body>
+</html>
