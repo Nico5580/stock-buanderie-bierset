@@ -366,6 +366,7 @@ const USE_FB = /^https?:\/\//.test(FB_URL);
 // renouvellement reste dans le téléphone. La clé API est publique par
 // conception (elle identifie le projet, elle n'ouvre aucun accès seule).
 const FB_API_KEY = "A_REMPLACER_PAR_LA_CLE_API_WEB_DU_PROJET_BIERSET";
+const AUTH_ON = !/^A_REMPLACER/.test(FB_API_KEY); // tant que la clé n'est pas renseignée, aucune connexion exigée
 const AUTH_KEY = "stock-bierset-auth"; // {email, refresh}
 let fbIdToken = "", fbIdTokenExp = 0, fbAuthRefreshing = null;
 function authLoad(){
@@ -2153,7 +2154,7 @@ document.getElementById("exportBackdrop").addEventListener("click", closeExportS
 // ---- Écran de connexion ----------------------------------------------
 let loginOpen = false;
 function openLoginModal(){
-  if(!USE_FB || loginOpen) return;
+  if(!USE_FB || !AUTH_ON || loginOpen) return;
   loginOpen = true;
   const backdrop = document.getElementById("modalBackdrop");
   const box = document.getElementById("modalBox");
@@ -2225,7 +2226,7 @@ async function syncAndStart(){
   render();
   renderOrderBadge();
   // base protégée : pas de connexion enregistrée sur ce téléphone → écran de connexion d'abord
-  if(USE_FB && !authSaved()){ openLoginModal(); return; }
+  if(USE_FB && AUTH_ON && !authSaved()){ openLoginModal(); return; }
   await syncAndStart();
 })();
 </script>
