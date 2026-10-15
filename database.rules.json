@@ -1,0 +1,23 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "products": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$k": {
+        ".validate": "newData.hasChildren(['name','base'])",
+        "name": {".validate": "newData.isString() && newData.val().length < 120"},
+        "base": {".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99999"},
+        "target": {".validate": "newData.isNumber()"},
+        "$other": {".validate": false}
+      }
+    },
+    "log": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$id": {".validate": "newData.hasChildren(['user','action','name'])"}
+    },
+    "meta": {".read": "auth != null", ".write": "auth != null"}
+  }
+}
