@@ -326,7 +326,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VERSION = "v1.1 · 8 oct. 2026 · Bierset";
+const APP_VERSION = "v1.2 · 15 oct. 2026 · Bierset";
 const STORAGE_KEY = "stock-bierset-v1";
 const API_URL_KEY = "stock-bierset-apiurl";
 const USER_KEY = "stock-bierset-user";
@@ -360,7 +360,86 @@ const ADMIN_PIN = "1282";
 const FB_URL = (localStorage.getItem("stock-bierset-fburl") || "https://stock-buanderie-bierset-default-rtdb.europe-west1.firebasedatabase.app").replace(/\/+$/, "");
 const USE_FB = /^https?:\/\//.test(FB_URL);
 
-let apiUrl = USE_FB ? FB_URL : (localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL);
+// ---- Connexion (Firebase Authentication) -------------------------------
+// La base n'est lisible/modifiable qu'avec un jeton de connexion. Le mot de
+// passe est saisi une fois par appareil et jamais stocké : seul un jeton de
+// renouvellement reste dans le téléphone. La clé API est publique par
+// conception (elle identifie le projet, elle n'ouvre aucun accès seule).
+const FB_API_KEY = "A_REMPLACER_PAR_LA_CLE_API_WEB_DU_PROJET_BIERSET";
+const AUTH_KEY = "stock-bierset-auth"; // {email, refresh}
+let fbIdToken = "", fbIdTokenExp = 0, fbAuthRefreshing = null;
+function authLoad(){
+  try{ return JSON.parse(localStorage.getItem(AUTH_KEY) || "null"); }catch(e){ return null; }
+}
+function authSaved(){ const a = authLoad(); return !!(a && a.refresh); }
+function authClear(){
+  fbIdToken = ""; fbIdTokenExp = 0;
+  try{ const a = authLoad(); localStorage.setItem(AUTH_KEY, JSON.stringify({email: (a && a.email) || "", refresh: ""})); }catch(e){}
+}
+async function authPost(url, init){
+  const res = await fetch(url, init);
+  let data = null;
+  try{ data = await res.json(); }catch(e){}
+  return {ok: res.ok, status: res.status, data};
+}
+async function authSignIn(email, password){
+  const r = await authPost("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + FB_API_KEY, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({email, password, returnSecureToken:true})
+  });
+  if(!r.ok){
+    throw new Error((r.data && r.data.error && r.data.error.message) || ("erreur " + r.status));
+  }
+  fbIdToken = r.data.idToken;
+  fbIdTokenExp = Date.now() + (Number(r.data.expiresIn) || 3600) * 1000;
+  localStorage.setItem(AUTH_KEY, JSON.stringify({email, refresh: r.data.refreshToken}));
+}
+function authRefresh(){
+  const a = authLoad();
+  if(!a || !a.refresh) return Promise.resolve(false);
+  if(fbAuthRefreshing) return fbAuthRefreshing;
+  fbAuthRefreshing = (async () => {
+    try{
+      const r = await authPost("https://securetoken.googleapis.com/v1/token?key=" + FB_API_KEY, {
+        method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"},
+        body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(a.refresh)
+      });
+      if(r.ok && r.data && r.data.id_token){
+        fbIdToken = r.data.id_token;
+        fbIdTokenExp = Date.now() + (Number(r.data.expires_in) || 3600) * 1000;
+        localStorage.setItem(AUTH_KEY, JSON.stringify({email: a.email, refresh: r.data.refresh_token || a.refresh}));
+        return true;
+      }
+      // refus définitif (compte supprimé, jeton révoqué…) → il faudra se reconnecter
+      if(r.status === 400 || r.status === 401) authClear();
+      return false;
+    }catch(e){ return false; } // pas de réseau : on garde le jeton de renouvellement
+    finally{ fbAuthRefreshing = null; }
+  })();
+  return fbAuthRefreshing;
+}
+async function fbToken(force){
+  if(!force && fbIdToken && Date.now() < fbIdTokenExp - 60000) return fbIdToken;
+  await authRefresh();
+  return fbIdToken || "";
+}
+function fbAuthUrl(path, tok){
+  return FB_URL + path + (tok ? (path.includes("?") ? "&" : "?") + "auth=" + encodeURIComponent(tok) : "");
+}
+// Toutes les requêtes vers la base passent par ici (jeton ajouté, renouvelé
+// et rejoué une fois si le serveur répond 401).
+async function fbReq(path, opts){
+  let tok = await fbToken();
+  let res = await fetch(fbAuthUrl(path, tok), opts);
+  if(res.status === 401){
+    tok = await fbToken(true);
+    if(tok) res = await fetch(fbAuthUrl(path, tok), opts);
+    if(res.status === 401 && !authSaved()) openLoginModal();
+  }
+  return res;
+}
+
+let apiUrl =USE_FB ? FB_URL : (localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL);
 let syncPollTimer = null;
 
 function getUsername(){
@@ -647,7 +726,7 @@ async function fbFetchJson(path, opts){
   const ctrl = new AbortController();
   const killer = setTimeout(() => ctrl.abort(), GET_TIMEOUT_MS);
   try{
-    const res = await fetch(FB_URL + path, Object.assign({cache:"no-store", signal: ctrl.signal}, opts || {}));
+    const res = await fbReq(path, Object.assign({cache:"no-store", signal: ctrl.signal}, opts || {}));
     if(!res.ok){
       lastApiError = res.status === 401 || res.status === 403 ? "accès refusé par la base de données"
         : "base de données : erreur " + res.status;
@@ -684,7 +763,7 @@ async function fbMigrateIfNeeded(){
     upd["products/" + fbKey(name)] = row;
   });
   upd["meta/migrated"] = true;
-  const r = await fetch(FB_URL + "/.json", {method:"PATCH", body: JSON.stringify(upd)});
+  const r = await fbReq("/.json", {method:"PATCH", body: JSON.stringify(upd)});
   if(!r.ok){ lastApiError = "initialisation impossible (erreur " + r.status + ")"; return null; }
   return rows;
 }
@@ -722,7 +801,7 @@ async function fbSend(payload){
   const path = fbPath(payload.name);
   let res;
   if(payload.action === "delete"){
-    res = await fetch(FB_URL + path, {method:"DELETE", keepalive:true});
+    res = await fbReq(path, {method:"DELETE", keepalive:true});
   } else {
     const t = payload.target;
     const body = {
@@ -730,7 +809,7 @@ async function fbSend(payload){
       base: Number(payload.base) || 0,
       target: (t === null || t === undefined || t === "") ? null : Number(t)
     };
-    res = await fetch(FB_URL + path, {method:"PUT", keepalive:true, body: JSON.stringify(body)});
+    res = await fbReq(path, {method:"PUT", keepalive:true, body: JSON.stringify(body)});
   }
   if(!res.ok){
     lastApiError = res.status === 401 || res.status === 403 ? "accès refusé par la base de données" : "base de données : erreur " + res.status;
@@ -750,7 +829,7 @@ async function fbSend(payload){
     entry.base = Number(payload.base) || 0;
     if(payload.target !== null && payload.target !== undefined && payload.target !== "") entry.target = Number(payload.target);
   }
-  fetch(FB_URL + "/log.json", {method:"POST", keepalive:true, body: JSON.stringify(entry)}).catch(() => {});
+  fbReq("/log.json", {method:"POST", keepalive:true, body: JSON.stringify(entry)}).catch(() => {});
 }
 
 async function fbGetLog(limit){
@@ -783,13 +862,17 @@ async function fbSeed(list){
     upd["products/" + fbKey(p.name)] = {name:p.name, base:Number(p.base) || 0, target:(p.target === null || p.target === undefined || p.target === "") ? null : Number(p.target)};
   });
   upd["meta/migrated"] = true;
-  try{ await fetch(FB_URL + "/.json", {method:"PATCH", body: JSON.stringify(upd)}); }catch(e){ /* ignore */ }
+  try{ await fbReq("/.json", {method:"PATCH", body: JSON.stringify(upd)}); }catch(e){ /* ignore */ }
 }
 
 // Flux temps réel : le serveur pousse chaque changement, on relit aussitôt.
 // (Les iPhone coupent la connexion en arrière-plan : on la rouvre au retour.)
-let fbStream = null, fbStreamOk = false, pollAgain = false;
+// Le jeton Firebase dure 1 h : le flux est relancé avec un jeton frais toutes
+// les 45 min, sur l'événement auth_revoked, et si la connexion se ferme pour de bon.
+let fbStream = null, fbStreamOk = false, pollAgain = false, fbStreamId = 0, fbStreamTimer = null;
 function fbStopStream(){
+  fbStreamId++;
+  clearTimeout(fbStreamTimer);
   if(fbStream){ try{ fbStream.close(); }catch(e){} }
   fbStream = null; fbStreamOk = false;
 }
@@ -798,16 +881,27 @@ function fbOnStream(){
   if(pollBusy){ pollAgain = true; return; }
   pollOnce();
 }
-function fbStartStream(){
+async function fbStartStream(){
   fbStopStream();
   if(!USE_FB || typeof EventSource === "undefined") return;
+  const myId = ++fbStreamId;
+  const tok = await fbToken();
+  if(myId !== fbStreamId) return; // relancé ou arrêté pendant l'attente du jeton
   try{
-    const es = new EventSource(FB_URL + "/products.json");
+    const es = new EventSource(fbAuthUrl("/products.json", tok));
     fbStream = es;
     es.onopen = () => { fbStreamOk = true; };
     es.addEventListener("put", fbOnStream);
     es.addEventListener("patch", fbOnStream);
-    es.onerror = () => { fbStreamOk = false; };
+    // le jeton expire au bout d'une heure : le serveur coupe alors le flux
+    es.addEventListener("auth_revoked", () => { if(fbStream === es) fbStartStream(); });
+    es.onerror = () => {
+      fbStreamOk = false;
+      // connexion fermée pour de bon (jeton refusé) : nouvel essai avec un jeton frais
+      if(es.readyState === 2 && (fbIdToken || authSaved())) setTimeout(() => { if(fbStream === es) fbStartStream(); }, 3000);
+    };
+    // renouvelle le flux avant l'expiration du jeton
+    fbStreamTimer = setTimeout(() => { if(fbStream === es) fbStartStream(); }, 45 * 60 * 1000);
   }catch(e){ fbStreamOk = false; }
 }
 
@@ -2056,12 +2150,58 @@ document.getElementById("openExport").addEventListener("click", openExportSheet)
 document.getElementById("closeExport").addEventListener("click", closeExportSheet);
 document.getElementById("exportBackdrop").addEventListener("click", closeExportSheet);
 
-(async function init(){
-  document.getElementById("appVersion").textContent = "Version " + APP_VERSION;
-  updateHistoryVisibility();
-  await loadData();
-  render();
-  renderOrderBadge();
+// ---- Écran de connexion ----------------------------------------------
+let loginOpen = false;
+function openLoginModal(){
+  if(!USE_FB || loginOpen) return;
+  loginOpen = true;
+  const backdrop = document.getElementById("modalBackdrop");
+  const box = document.getElementById("modalBox");
+  box.innerHTML = `
+    <p>Connexion</p>
+    <div class="modal-sub">Entre l'e-mail et le mot de passe de l'appli. Une seule fois sur ce téléphone.</div>
+    <input id="lgEmail" style="margin-bottom:0;" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="E-mail">
+    <input id="lgPass" type="password" autocomplete="current-password" placeholder="Mot de passe" style="margin-top:8px;">
+    <div class="modal-sub" id="lgErr" style="color:var(--warn); margin:8px 0 0; min-height:16px;"></div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="modal-confirm" id="lgOk" style="width:100%;">Se connecter</button>
+    </div>`;
+  backdrop.classList.add("show");
+  backdrop.onclick = null; // pas de fermeture en touchant à côté
+  const emailEl = box.querySelector("#lgEmail"), passEl = box.querySelector("#lgPass");
+  const errEl = box.querySelector("#lgErr"), okBtn = box.querySelector("#lgOk");
+  const a = authLoad();
+  if(a && a.email) emailEl.value = a.email;
+  async function submit(){
+    const email = emailEl.value.trim(), pass = passEl.value;
+    if(!email || !pass){ errEl.textContent = "Entre l'e-mail et le mot de passe."; return; }
+    okBtn.disabled = true; okBtn.textContent = "Connexion…"; errEl.textContent = "";
+    try{
+      await authSignIn(email, pass);
+    }catch(e){
+      const m = String((e && e.message) || "");
+      errEl.textContent =
+        /INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND|INVALID_PASSWORD|INVALID_EMAIL/.test(m) ? "E-mail ou mot de passe incorrect."
+        : /TOO_MANY_ATTEMPTS/.test(m) ? "Trop d'essais : réessaie dans quelques minutes."
+        : /API.?KEY/i.test(m) ? "Clé API refusée (problème de configuration) : " + m.slice(0, 120)
+        : (e instanceof TypeError) ? "Pas de réseau."
+        : "Connexion impossible : " + m;
+      okBtn.disabled = false; okBtn.textContent = "Se connecter";
+      return;
+    }
+    passEl.value = "";
+    loginOpen = false;
+    backdrop.classList.remove("show");
+    showToast("Connecté");
+    syncAndStart();
+  }
+  okBtn.onclick = submit;
+  passEl.addEventListener("keydown", (ev) => { if(ev.key === "Enter") submit(); });
+  setTimeout(() => (emailEl.value ? passEl : emailEl).focus(), 50);
+}
+
+// Première lecture + démarrage de la synchro (après connexion si nécessaire).
+async function syncAndStart(){
   if(apiUrl){
     const serverProducts = await apiGet();
     if(serverProducts){
@@ -2073,9 +2213,20 @@ document.getElementById("exportBackdrop").addEventListener("click", closeExportS
     }
   }
   startPolling();
-  if(apiUrl && !getUsername()){
+  if(apiUrl && !getUsername() && !loginOpen){
     openUserModal();
   }
+}
+
+(async function init(){
+  document.getElementById("appVersion").textContent = "Version " + APP_VERSION;
+  updateHistoryVisibility();
+  await loadData();
+  render();
+  renderOrderBadge();
+  // base protégée : pas de connexion enregistrée sur ce téléphone → écran de connexion d'abord
+  if(USE_FB && !authSaved()){ openLoginModal(); return; }
+  await syncAndStart();
 })();
 </script>
 
